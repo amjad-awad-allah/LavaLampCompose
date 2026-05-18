@@ -1,0 +1,31 @@
+# Built artifacts
+build/
+bin/
+gen/
+out/
+app/build/
+lavalamp/build/
+
+# Gradle files
+.gradle/
+buildOutputCleanup/
+
+# Local developer configuration
+local.properties
+.navigation/
+
+# Log files
+*.log
+
+# Android Studio & IntelliJ files
+.idea/
+*.iml
+*.ipr
+*.iws
+.idea/workspace.xml
+.idea/caches/
+.idea/libraries/
+
+# OS files
+.DS_Store
+Thumbs.db
