@@ -182,7 +182,15 @@ If you are minifying your release build, keep Compose graphics layers safe by ad
 - Dynamic sensor registration and lifecycle pause/resume safety.
 - Native allocated bitmap memory auto-recycling.
 
+
 ---
+
+## 📬 Contact
+- **LinkedIn**: [amjad-awad-allah](https://www.linkedin.com/in/amjad-awad-allah)
+- **Email**: [amjad.awadallah93@gmail.com](mailto:amjad.awadallah93@gmail.com)
+- **Webseit**:  [amjadawadallah.com](https://amjadawadallah.com/)
+- **GitHub**: [@amjad-awad-allah](https://github.com/amjad-awad-allah)
+
 
 ## 📄 License
 
