@@ -2,10 +2,40 @@
 
 [![Build Status](https://img.shields.io/badge/Android-100%25%20Build%20Successful-brightgreen.svg?style=for-the-badge&logo=android)](https://developer.android.com)
 [![Platform](https://img.shields.io/badge/Compose-v2026.05.00-purple.svg?style=for-the-badge&logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
-[![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg?style=for-the-badge)](https://github.com)
+[![Release Version](https://img.shields.io/badge/Release-v1.0.0-blue.svg?style=for-the-badge&logo=github)](https://github.com/amjad-awad-allah/LavaLampCompose)
 [![License](https://img.shields.io/badge/License-MIT-orange.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 **LavaLamp** is a premium, high-fidelity, viscous fluid physics simulation library designed exclusively for **Jetpack Compose**. It brings beautiful organic fluid metaballs, glass tapered chambers, and tactile physics displacement to Android with state-of-the-art GPU optimizations.
+
+---
+
+## 📦 Installation & Versioning
+
+You can integrate this library directly into any Android application using **JitPack** and the GitHub release tag **`1.0.0`**.
+
+### 1. Register JitPack Repository
+Add the JitPack maven repository to your root project's `settings.gradle.kts` file:
+
+```kotlin
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") } // <-- Add this line
+    }
+}
+```
+
+### 2. Implement Library Dependency
+Add the dependency to your app's `build.gradle.kts` file:
+
+```kotlin
+dependencies {
+    // Exact release version for remote JitPack implementation
+    implementation("com.github.amjad-awad-allah:LavaLampCompose:1.0.0")
+}
+```
 
 ---
 
@@ -23,7 +53,7 @@
 
 ---
 
-## 📸 visual Architecture
+## 📸 Visual Architecture
 
 ```mermaid
 graph TD
@@ -38,24 +68,6 @@ graph TD
         D --> H[Soft Repulsion Collision]
         D --> I[Direct Touch Magnet & Explode-Splitting]
     end
-```
-
----
-
-## 📦 Installation
-
-To include `LavaLamp` in your Android project, add the library dependency to your multi-module configuration:
-
-### 1. Root `settings.gradle.kts`
-```kotlin
-include(":lavalamp")
-```
-
-### 2. App-level `build.gradle.kts`
-```kotlin
-dependencies {
-    implementation(project(":lavalamp"))
-}
 ```
 
 ---
@@ -113,7 +125,7 @@ The `LavaLamp` composable accepts the following configuration parameters:
 
 ---
 
-## 🎨 Custom PNG Images Mode (metaballs blending)
+## 🎨 Custom PNG Images Mode (Metaballs Blending)
 
 To blend custom PNG assets or emojis as liquid blobs inside the glass chamber:
 
@@ -157,6 +169,18 @@ If you are minifying your release build, keep Compose graphics layers safe by ad
 # Keep compose graphics render effects safe
 -keepclassmembers class androidx.compose.ui.graphics.** { *; }
 ```
+
+---
+
+## 📅 Changelog
+
+### [v1.0.0] - 2026-05-18
+- **Initial Stable Release** 🌋
+- Independent `:lavalamp` library module architecture.
+- Volumetric soft collision push physics engine.
+- 4x rendering speed blur performance tuning (60fps guaranteed).
+- Dynamic sensor registration and lifecycle pause/resume safety.
+- Native allocated bitmap memory auto-recycling.
 
 ---
 
