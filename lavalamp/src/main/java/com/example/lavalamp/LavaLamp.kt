@@ -81,7 +81,8 @@ class LavaBlob(
     var imageIndex: Int = 0, // Identifies which PNG asset texture from the custom image list this blob represents
     val id: Int = Random.nextInt(),
     var connectedBlobId: Int = -1, // ID of elastically bound blob, -1 if none
-    var isAttachedToFinger: Boolean = false // If dragged directly by the finger
+    var isAttachedToFinger: Boolean = false, // If dragged directly by the finger
+    var snapRecoilTime: Float = -1f // Time counter for post-split surface tension springy recoil
 )
 
 /**
@@ -383,8 +384,8 @@ fun LavaLamp(
                                 val dist = hypot(dx, dy)
                                 val stretchThreshold = parent.baseRadius * 1.4f
                                 if (dist < stretchThreshold) {
-                                    // Spawn daughter liquid droplet at finger position!
-                                    val daughterRadius = parent.baseRadius * 0.45f
+                                    // Spawn daughter liquid droplet with 0.65f radius for thicker gooey necking!
+                                    val daughterRadius = parent.baseRadius * 0.65f
                                     val daughterBlob = LavaBlob(
                                         color = parent.color,
                                         baseRadius = daughterRadius,
@@ -446,6 +447,9 @@ fun LavaLamp(
                                 blobA.connectedBlobId = -1
                                 blobB.connectedBlobId = -1
                                 blobB.isAttachedToFinger = false
+                                // Trigger surface tension snap vibration recoil on both parent and daughter!
+                                blobA.snapRecoilTime = 0f
+                                blobB.snapRecoilTime = 0f
                                 // Give the daughter droplet a physical fling matching finger velocity
                                 blobB.vx = touchVelocity.x * 0.7f
                                 blobB.vy = touchVelocity.y * 0.7f
@@ -500,6 +504,14 @@ fun LavaLamp(
             }
 
             blobs.forEach { blob ->
+                // Progress snap recoil oscillation time
+                if (blob.snapRecoilTime != -1f) {
+                    blob.snapRecoilTime += delta
+                    if (blob.snapRecoilTime > 1.0f) {
+                        blob.snapRecoilTime = -1f
+                    }
+                }
+
                 // Initialize inside the bottle coordinates
                 if (blob.x == -1f) {
                     blob.x = centerX + (Random.nextFloat() - 0.5f) * (lampWidth * 0.4f)
@@ -743,13 +755,13 @@ fun LavaLamp(
                         // Apply highly stable, optimized Blur + Alpha Thresholding ONLY to the blobs!
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                             val blur = android.graphics.RenderEffect.createBlurEffect(
-                                16f, 16f, android.graphics.Shader.TileMode.CLAMP // CLAMP is 100% stable on emulators!
+                                26f, 26f, android.graphics.Shader.TileMode.CLAMP // Larger blur envelope for gooey fluid merging!
                             )
                             val matrix = floatArrayOf(
                                 1f, 0f, 0f, 0f, 0f,
                                 0f, 1f, 0f, 0f, 0f,
                                 0f, 0f, 1f, 0f, 0f,
-                                0f, 0f, 0f, 24f, -1150f // Optimized 4x faster rendering color threshold
+                                0f, 0f, 0f, 20f, -900f // Balanced high-contrast threshold for smooth viscous wax boundaries
                             )
                             val colorFilter = android.graphics.RenderEffect.createColorFilterEffect(
                                 ColorMatrixColorFilter(matrix)
@@ -799,7 +811,29 @@ fun LavaLamp(
                     blobs.forEach { blob ->
                         if (blob.x == -1f) return@forEach
 
-                        val radius = blob.baseRadius * (1f + 0.12f * sin(time * blob.scaleSpeed + blob.scalePhase))
+                        // 1. Calculate dynamic scale breathing radius
+                        var radius = blob.baseRadius * (1f + 0.12f * sin(time * blob.scaleSpeed + blob.scalePhase))
+
+                        // 2. Dynamic Neck Thinning: If stretching, slim the radii down as distance grows to conserve volume and make the neck gooey!
+                        if (blob.connectedBlobId != -1) {
+                            val sibling = blobs.find { it.id == blob.connectedBlobId }
+                            if (sibling != null) {
+                                val dx = sibling.x - blob.x
+                                val dy = sibling.y - blob.y
+                                val dist = hypot(dx, dy)
+                                val limit = blob.baseRadius * 2.3f
+                                val stretchRatio = (dist / limit).coerceIn(0f, 1f)
+                                // Slim down by up to 28% to physically thin the neck
+                                radius *= (1.0f - stretchRatio * 0.28f)
+                            }
+                        }
+
+                        // 3. Post-Pinch-Off Springy Recoil oscillation scale (surface tension snap wobble)
+                        if (blob.snapRecoilTime != -1f) {
+                            val t = blob.snapRecoilTime
+                            val recoilScale = 1f - 0.24f * kotlin.math.cos(t * 16f) * kotlin.math.exp(-t * 4.5f)
+                            radius *= recoilScale
+                        }
 
                         if (blobImages != null && blobImages.isNotEmpty()) {
                             // Scale and render custom PNG image asset
