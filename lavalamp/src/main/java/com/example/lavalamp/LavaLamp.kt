@@ -263,6 +263,7 @@ fun LavaLamp(
     // 3. Physics engine loop inside LaunchedEffect (uses self-sustaining delay to bypass Choreographer idle sleeps)
     LaunchedEffect(blobs, size, speed, flowIntensity) {
         var lastTime = System.nanoTime()
+        var prevTouchPos: Offset? = null
         while (isActive) {
             // Guarantee continuous ticking at ~60fps independently of screen draw passes (paused when app is in background)
             kotlinx.coroutines.delay(16)
@@ -272,9 +273,19 @@ fun LavaLamp(
             }
 
             val currentTime = System.nanoTime()
-            val delta = ((currentTime - lastTime) / 1_000_000_000f) * speed * (0.4f + flowIntensity * 1.6f)
+            val realDelta = (currentTime - lastTime) / 1_000_000_000f
+            val delta = realDelta * speed * (0.4f + flowIntensity * 1.6f)
             lastTime = currentTime
             time += delta
+
+            // Calculate Touch Velocity for Drag/Swipe Influence
+            val currentTouch = touchPosition
+            val touchVelocity = if (currentTouch != null && prevTouchPos != null && realDelta > 0) {
+                (currentTouch - prevTouchPos) / realDelta
+            } else {
+                Offset.Zero
+            }
+            prevTouchPos = currentTouch
 
             val width = size.width.toFloat()
             val height = size.height.toFloat()
@@ -344,65 +355,7 @@ fun LavaLamp(
                 }
             }
 
-            // D. Tactile Bubble Pop/Splitting on direct touch (popping blobs with your finger)
-            if (interactive) {
-                touchPosition?.let { touch ->
-                    val touchNewBlobs = mutableListOf<LavaBlob>()
-                    val touchBlobsToRemove = mutableListOf<LavaBlob>()
-                    
-                    val currentBlobsList = blobs.toList()
-                    currentBlobsList.forEach { blob ->
-                        if (blob.x != -1f) {
-                            val dx = touch.x - blob.x
-                            val dy = touch.y - blob.y
-                            val dist = hypot(dx, dy)
-                            
-                            // Check if the touch is inside this specific bubble (with a 20px comfort buffer for easy tapping)
-                            val currentRadius = blob.baseRadius * (1f + 0.12f * sin(time * blob.scaleSpeed + blob.scalePhase))
-                            if (dist < currentRadius + 20f) {
-                                if (blob.baseRadius > 45f) { // Only split larger blobs to keep count balanced
-                                    touchBlobsToRemove.add(blob)
-                                    val newRadius = blob.baseRadius * 0.68f
-                                    
-                                    // Pop explosion: split into two bubbles pushed away dynamically
-                                    val angle = Random.nextFloat() * 2f * Math.PI.toFloat()
-                                    val explosionForce = 180f + Random.nextFloat() * 100f
-                                    
-                                    touchNewBlobs.add(
-                                        LavaBlob(
-                                            color = blob.color,
-                                            baseRadius = newRadius,
-                                            x = blob.x - sin(angle) * 12f,
-                                            y = blob.y - cos(angle) * 12f,
-                                            vx = -sin(angle) * explosionForce,
-                                            vy = -cos(angle) * explosionForce,
-                                            isRising = Random.nextBoolean(),
-                                            imageIndex = blob.imageIndex
-                                        )
-                                    )
-                                    touchNewBlobs.add(
-                                        LavaBlob(
-                                            color = blob.color,
-                                            baseRadius = newRadius,
-                                            x = blob.x + sin(angle) * 12f,
-                                            y = blob.y + cos(angle) * 12f,
-                                            vx = sin(angle) * explosionForce,
-                                            vy = cos(angle) * explosionForce,
-                                            isRising = Random.nextBoolean(),
-                                            imageIndex = blob.imageIndex
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    
-                    if (touchBlobsToRemove.isNotEmpty()) {
-                        blobs.removeAll(touchBlobsToRemove)
-                        blobs.addAll(touchNewBlobs)
-                    }
-                }
-            }
+            // D. Tactile Bubble interaction (Removed splitting to maintain liquid behavior)
 
             // 2.5 Calculate volumetric soft repulsion between blobs (elastic collision push)
             val activePhysicsBlobs = blobs.toList()
@@ -455,27 +408,47 @@ fun LavaLamp(
                 val tiltForceX = tiltOffset.x * 12f
                 val tiltForceY = tiltOffset.y * 4f
 
-                // C. Viscous Touch Magnet Force (Physical attraction to finger inside glass container)
+                // C. Viscous Touch Magnet & Drag Force (Physical attraction and swipe momentum)
                 var touchForceX = 0f
                 var touchForceY = 0f
+                var dragForceX = 0f
+                var dragForceY = 0f
                 if (interactive) {
                     touchPosition?.let { touch ->
                         val dx = touch.x - blob.x
                         val dy = touch.y - blob.y
                         val dist = hypot(dx, dy)
-                        val influenceRadius = lampWidth * 1.4f // Stronger and wider finger attraction field
+                        
+                        // 1. Soft Magnetic Attraction (Pulls liquid gently to look viscous, not violent)
+                        val influenceRadius = lampWidth * 1.3f 
                         if (dist < influenceRadius && dist > 5f) {
                             val pullFactor = (1f - dist / influenceRadius)
-                            val strength = pullFactor * 450f
+                            val strength = pullFactor * 160f // Reduced from 450f for thick liquid cohesion
                             touchForceX = (dx / dist) * strength
                             touchForceY = (dy / dist) * strength
+                        }
+                        
+                        // 2. Strong Swipe Momentum (Fluid flow created by finger drag)
+                        val dragRadius = lampWidth * 1.2f 
+                        if (dist < dragRadius && touchVelocity != Offset.Zero) {
+                            val dragFactor = (1f - dist / dragRadius)
+                            dragForceX = touchVelocity.x * dragFactor * 0.45f // Increased to 0.45f for strong swipe impact!
+                            dragForceY = touchVelocity.y * dragFactor * 0.45f
                         }
                     }
                 }
 
                 // D. Apply high-viscosity fluid drag (adjustable damping and smoothing weights from physicsConfig)
-                blob.vx = blob.vx * physicsConfig.damping + (horizontalDrift + tiltForceX + touchForceX) * physicsConfig.smoothingWeight
-                blob.vy = blob.vy * physicsConfig.damping + (verticalBuoyancy + tiltForceY + touchForceY) * physicsConfig.smoothingWeight
+                blob.vx = blob.vx * physicsConfig.damping + (horizontalDrift + tiltForceX + touchForceX + dragForceX) * physicsConfig.smoothingWeight
+                blob.vy = blob.vy * physicsConfig.damping + (verticalBuoyancy + tiltForceY + touchForceY + dragForceY) * physicsConfig.smoothingWeight
+
+                // Speed Clamping (Viscosity Limit to prevent liquid from disintegrating or scattering)
+                val maxSpeed = 380f
+                val currentSpeed = hypot(blob.vx, blob.vy)
+                if (currentSpeed > maxSpeed) {
+                    blob.vx = (blob.vx / currentSpeed) * maxSpeed
+                    blob.vy = (blob.vy / currentSpeed) * maxSpeed
+                }
 
                 // E. Update positions
                 blob.x += blob.vx * delta
