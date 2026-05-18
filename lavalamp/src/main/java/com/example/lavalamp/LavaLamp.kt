@@ -78,7 +78,10 @@ class LavaBlob(
     val phaseX: Float = Random.nextFloat() * 2f * Math.PI.toFloat(),
     val scalePhase: Float = Random.nextFloat() * 2f * Math.PI.toFloat(),
     val scaleSpeed: Float = Random.nextFloat() * 0.3f + 0.1f,
-    var imageIndex: Int = 0 // Identifies which PNG asset texture from the custom image list this blob represents
+    var imageIndex: Int = 0, // Identifies which PNG asset texture from the custom image list this blob represents
+    val id: Int = Random.nextInt(),
+    var connectedBlobId: Int = -1, // ID of elastically bound blob, -1 if none
+    var isAttachedToFinger: Boolean = false // If dragged directly by the finger
 )
 
 /**
@@ -355,8 +358,113 @@ fun LavaLamp(
                 }
             }
 
-            // D. Tactile Bubble interaction (Removed splitting to maintain liquid behavior)
+            // D. Viscous Fluid Necking, Pinch-Off, and Re-Merging (Liquid physics stretching)
+            if (interactive) {
+                val currentTouch = touchPosition
+                if (currentTouch != null) {
+                    // 1. If dragging, any blob with isAttachedToFinger follows the finger smoothly
+                    blobs.forEach { b ->
+                        if (b.isAttachedToFinger) {
+                            b.x = b.x * 0.72f + currentTouch.x * 0.28f
+                            b.y = b.y * 0.72f + currentTouch.y * 0.28f
+                            b.vx = touchVelocity.x
+                            b.vy = touchVelocity.y
+                        }
+                    }
 
+                    // 2. Initiate stretching: If finger is close to a blob and no stretch is active, spawn a child droplet
+                    val listForStretch = blobs.toList()
+                    val hasAttachedFinger = listForStretch.any { it.isAttachedToFinger }
+                    if (!hasAttachedFinger) {
+                        for (parent in listForStretch) {
+                            if (parent.x != -1f && parent.connectedBlobId == -1 && !parent.isAttachedToFinger) {
+                                val dx = currentTouch.x - parent.x
+                                val dy = currentTouch.y - parent.y
+                                val dist = hypot(dx, dy)
+                                val stretchThreshold = parent.baseRadius * 1.4f
+                                if (dist < stretchThreshold) {
+                                    // Spawn daughter liquid droplet at finger position!
+                                    val daughterRadius = parent.baseRadius * 0.45f
+                                    val daughterBlob = LavaBlob(
+                                        color = parent.color,
+                                        baseRadius = daughterRadius,
+                                        x = currentTouch.x,
+                                        y = currentTouch.y,
+                                        vx = touchVelocity.x,
+                                        vy = touchVelocity.y,
+                                        isRising = parent.isRising,
+                                        imageIndex = parent.imageIndex,
+                                        connectedBlobId = parent.id,
+                                        isAttachedToFinger = true
+                                    )
+                                    parent.connectedBlobId = daughterBlob.id
+                                    blobs.add(daughterBlob)
+                                    break // Initiate only one stretching droplet per touch frame
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // If touch is released, clear all finger attachments
+                    blobs.forEach { it.isAttachedToFinger = false }
+                }
+
+                // 3. Process elastic spring neck tension & Pinch-off / Re-merge checking
+                val listForSprings = blobs.toList()
+                val daughtersToRemove = mutableListOf<LavaBlob>()
+                val parentConnectionsToClear = mutableListOf<LavaBlob>()
+
+                for (blobA in listForSprings) {
+                    if (blobA.connectedBlobId != -1) {
+                        val blobB = listForSprings.find { it.id == blobA.connectedBlobId }
+                        if (blobB != null) {
+                            // Compute liquid neck length (distance)
+                            val dx = blobB.x - blobA.x
+                            val dy = blobB.y - blobA.y
+                            val dist = hypot(dx, dy)
+
+                            if (dist > 5f) {
+                                // Apply viscous spring force between parent and daughter (liquid neck surface tension)
+                                val springStrength = 0.09f
+                                val restLength = blobA.baseRadius * 0.15f
+                                val displacement = dist - restLength
+                                if (displacement > 0) {
+                                    val fx = (dx / dist) * displacement * springStrength
+                                    val fy = (dy / dist) * displacement * springStrength
+                                    
+                                    // Pull them back together like thick elastic mercury
+                                    blobA.vx += fx * 15f
+                                    blobA.vy += fy * 15f
+                                    blobB.vx -= fx * 15f
+                                    blobB.vy -= fy * 15f
+                                }
+                            }
+
+                            // A. Pinch-Off Trigger: If neck stretches beyond threshold, snap the neck and release droplet!
+                            val pinchOffLimit = blobA.baseRadius * 2.3f
+                            if (dist > pinchOffLimit) {
+                                blobA.connectedBlobId = -1
+                                blobB.connectedBlobId = -1
+                                blobB.isAttachedToFinger = false
+                                // Give the daughter droplet a physical fling matching finger velocity
+                                blobB.vx = touchVelocity.x * 0.7f
+                                blobB.vy = touchVelocity.y * 0.7f
+                            }
+                            
+                            // B. Re-Merge Snap-Back: If touch released and they snap back together, merge into one!
+                            if (currentTouch == null && dist < blobA.baseRadius * 0.65f) {
+                                daughtersToRemove.add(blobB)
+                                parentConnectionsToClear.add(blobA)
+                            }
+                        }
+                    }
+                }
+
+                if (daughtersToRemove.isNotEmpty()) {
+                    blobs.removeAll(daughtersToRemove)
+                    parentConnectionsToClear.forEach { it.connectedBlobId = -1 }
+                }
+            }
             // 2.5 Calculate volumetric soft repulsion between blobs (elastic collision push)
             val activePhysicsBlobs = blobs.toList()
             for (i in activePhysicsBlobs.indices) {
