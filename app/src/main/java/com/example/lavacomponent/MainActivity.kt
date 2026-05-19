@@ -9,6 +9,9 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -32,6 +35,9 @@ import com.example.lavalamp.LavaMode
 import com.example.lavalamp.LavaBackground
 import com.example.lavalamp.LavaPhysicsConfig
 import com.example.lavalamp.LavaContainerMode
+import com.example.lavalamp.LavaGravity
+import com.example.lavalamp.LavaGlassStyle
+import com.example.lavalamp.LavaViscosity
 
 enum class Screen { HOME, SPLASH, LOGIN, CUSTOM_OBJECTS, SANDBOX }
 
@@ -85,56 +91,116 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
                 )
         )
 
-        Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 28.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            contentPadding = PaddingValues(top = 72.dp, bottom = 52.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(top = 72.dp)
-            ) {
-                Text(
-                    "🌋", fontSize = 52.sp
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    "LavaLamp", color = Color.White, fontSize = 36.sp,
-                    fontWeight = FontWeight.Black, letterSpacing = 1.sp
-                )
-                Text(
-                    "Jetpack Compose Physics Library",
-                    color = Color(0xFF00FFFF).copy(alpha = 0.85f),
-                    fontSize = 13.sp, fontWeight = FontWeight.Medium
-                )
+            item {
+                Spacer(Modifier.height(8.dp))
+            }
+
+            item {
+                Text("LIVE EXAMPLES", color = Color.White.copy(0.6f), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth().padding(top = 16.dp), textAlign = TextAlign.Start)
+            }
+
+            // Mini Showcase: Thick Honey
+            item {
+                MiniShowcaseCard(title = "Thick Honey Viscosity", desc = "High blur and sticky threshold") {
+                    LavaLamp(
+                        modifier = Modifier.fillMaxSize(),
+                        blobCount = 4,
+                        speed = 0.5f,
+                        viscosity = LavaViscosity.THICK_HONEY,
+                        mode = LavaMode.Vector(LavaLampStyle.CLASSIC_70S),
+                        containerMode = LavaContainerMode.AMBIENT_BACKGROUND
+                    )
+                }
+            }
+
+            // Mini Showcase: Water
+            item {
+                MiniShowcaseCard(title = "Water Viscosity", desc = "Thin droplets, fast splitting") {
+                    LavaLamp(
+                        modifier = Modifier.fillMaxSize(),
+                        blobCount = 15,
+                        blobScale = 0.6f,
+                        speed = 1.5f,
+                        viscosity = LavaViscosity.WATER,
+                        mode = LavaMode.Vector(LavaLampStyle.DEEP_OCEAN),
+                        containerMode = LavaContainerMode.AMBIENT_BACKGROUND
+                    )
+                }
+            }
+
+            // Mini Showcase: Pulse Effect
+            item {
+                MiniShowcaseCard(title = "Pulsing Effect", desc = "Blobs rhythmically breathe") {
+                    LavaLamp(
+                        modifier = Modifier.fillMaxSize(),
+                        blobCount = 6,
+                        pulseSpeed = 2f,
+                        mode = LavaMode.Vector(LavaLampStyle.COTTON_CANDY),
+                        containerMode = LavaContainerMode.AMBIENT_BACKGROUND
+                    )
+                }
+            }
+
+            item {
+                Text("INTERACTIVE DEMOS", color = Color.White.copy(0.6f), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth().padding(top = 16.dp), textAlign = TextAlign.Start)
             }
 
             // Feature cards
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(bottom = 52.dp)) {
-                NavCard(
-                    emoji = "🎬", title = "Splash Screen",
-                    desc = "Fluid logo animation as app loading screen",
-                    accent = Color(0xFF8A2BE2)
-                ) { onNavigate(Screen.SPLASH) }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    NavCard(
+                        emoji = "🎬", title = "Splash Screen",
+                        desc = "Fluid logo animation as app loading screen",
+                        accent = Color(0xFF8A2BE2)
+                    ) { onNavigate(Screen.SPLASH) }
 
-                NavCard(
-                    emoji = "🏠", title = "Background Mode",
-                    desc = "Calm fluid running behind real UI components",
-                    accent = Color(0xFF00BCD4)
-                ) { onNavigate(Screen.LOGIN) }
+                    NavCard(
+                        emoji = "🏠", title = "Background Mode",
+                        desc = "Calm fluid running behind real UI components",
+                        accent = Color(0xFF00BCD4)
+                    ) { onNavigate(Screen.LOGIN) }
 
-                NavCard(
-                    emoji = "🔮", title = "Custom PNG Objects",
-                    desc = "Your own images melting & floating as fluid",
-                    accent = Color(0xFFE91E63)
-                ) { onNavigate(Screen.CUSTOM_OBJECTS) }
+                    NavCard(
+                        emoji = "🔮", title = "Custom PNG Objects",
+                        desc = "Your own images melting & floating as fluid",
+                        accent = Color(0xFFE91E63)
+                    ) { onNavigate(Screen.CUSTOM_OBJECTS) }
 
-                NavCard(
-                    emoji = "⚙️", title = "Physics Sandbox",
-                    desc = "Live-tune every physics parameter in real time",
-                    accent = Color(0xFF4CAF50)
-                ) { onNavigate(Screen.SANDBOX) }
+                    NavCard(
+                        emoji = "⚙️", title = "Physics Sandbox",
+                        desc = "Live-tune every physics parameter in real time",
+                        accent = Color(0xFF4CAF50)
+                    ) { onNavigate(Screen.SANDBOX) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MiniShowcaseCard(title: String, desc: String, content: @Composable () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().height(160.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF161622))
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            content()
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.8f))))
+                    .padding(16.dp)
+            ) {
+                Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(desc, color = Color.White.copy(0.6f), fontSize = 12.sp)
             }
         }
     }
@@ -209,27 +275,13 @@ fun SplashDemoScreen(onBack: () -> Unit) {
             )
         }
 
-        // Top label
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 64.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                "USE CASE 1", color = Color(0xFF8A2BE2),
-                fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Splash Screen", color = Color.White,
-                fontSize = 26.sp, fontWeight = FontWeight.Black
-            )
-            Text(
-                "Logo becomes the fluid itself",
-                color = Color.White.copy(0.55f), fontSize = 13.sp
-            )
-        }
+        ShowcaseHeader(
+            title = "Splash Screen",
+            subtitle = "Logo becomes the fluid itself",
+            label = "USE CASE 1",
+            color = Color(0xFF8A2BE2),
+            onBack = onBack
+        )
 
         // Bottom hint
         Column(
@@ -247,7 +299,7 @@ fun SplashDemoScreen(onBack: () -> Unit) {
             Text("Touch to interact • Shake to split", color = Color.White.copy(0.6f), fontSize = 12.sp)
         }
 
-        BackBtn(onBack)
+
     }
 }
 
@@ -277,21 +329,13 @@ fun LoginDemoScreen(onBack: () -> Unit) {
                 .background(Color.Black.copy(alpha = 0.38f))
         )
 
-        // USE CASE label
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 60.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                "USE CASE 2", color = Color(0xFF00BCD4),
-                fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp
-            )
-            Spacer(Modifier.height(4.dp))
-            Text("Background Mode", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black)
-            Text("Calm fluid behind real UI", color = Color.White.copy(0.55f), fontSize = 13.sp)
-        }
+        ShowcaseHeader(
+            title = "Background Mode",
+            subtitle = "Calm fluid behind real UI",
+            label = "USE CASE 2",
+            color = Color(0xFF00BCD4),
+            onBack = onBack
+        )
 
         // Glassmorphism login card
         Card(
@@ -346,7 +390,7 @@ fun LoginDemoScreen(onBack: () -> Unit) {
             }
         }
 
-        BackBtn(onBack)
+
     }
 }
 
@@ -389,21 +433,13 @@ fun CustomObjectsScreen(onBack: () -> Unit) {
             }
         }
 
-        // Top label
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 60.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                "USE CASE 3", color = Color(0xFFE91E63),
-                fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp
-            )
-            Spacer(Modifier.height(4.dp))
-            Text("Custom PNG Objects", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black)
-            Text("Your images become the fluid", color = Color.White.copy(0.55f), fontSize = 13.sp)
-        }
+        ShowcaseHeader(
+            title = "Custom PNG Objects",
+            subtitle = "Your images become the fluid",
+            label = "USE CASE 3",
+            color = Color(0xFFE91E63),
+            onBack = onBack
+        )
 
         // Bottom tip
         Box(
@@ -420,7 +456,7 @@ fun CustomObjectsScreen(onBack: () -> Unit) {
             )
         }
 
-        BackBtn(onBack)
+
     }
 }
 
@@ -436,26 +472,39 @@ fun SandboxScreen(onBack: () -> Unit) {
     var touchInfluence by remember { mutableFloatStateOf(1.0f) }
     var shakeInfluence by remember { mutableFloatStateOf(1.0f) }
     var lampRotation by remember { mutableFloatStateOf(0f) }
+    var blobScale by remember { mutableFloatStateOf(1.0f) }
     var isInteractive by remember { mutableStateOf(true) }
     var isSensorReactive by remember { mutableStateOf(false) }
     var hasNoiseOverlay by remember { mutableStateOf(true) }
+    var gravityMode by remember { mutableStateOf(LavaGravity.UP) }
+    var glassStyle by remember { mutableStateOf(LavaGlassStyle.REALISTIC_3D) }
+    var viscosity by remember { mutableStateOf(LavaViscosity.STANDARD) }
+    var pulseSpeed by remember { mutableFloatStateOf(0f) }
     var isExpanded by remember { mutableStateOf(true) }
 
     val stylesList = remember {
-        listOf(LavaLampStyle.CYBERPUNK, LavaLampStyle.VOLCANIC, LavaLampStyle.LIQUID_MERCURY, LavaLampStyle.AURORA_FOREST)
+        LavaLampStyle.values().toList()
+    }
+    val viscosityList = remember {
+        LavaViscosity.values().toList()
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LavaLamp(
             modifier = Modifier.fillMaxSize(),
             blobCount = blobCount,
+            blobScale = blobScale,
             speed = 1.0f,
             flowIntensity = flowIntensity,
             interactive = isInteractive,
             sensorReactive = isSensorReactive,
             noiseOverlay = hasNoiseOverlay,
             lampRotation = lampRotation,
+            gravityMode = gravityMode,
             containerMode = LavaContainerMode.GLASS_BOTTLE,
+            glassStyle = glassStyle,
+            viscosity = viscosity,
+            pulseSpeed = pulseSpeed,
             mode = LavaMode.Vector(selectedStyle),
             physicsConfig = LavaPhysicsConfig(
                 touchInfluence = touchInfluence,
@@ -463,21 +512,15 @@ fun SandboxScreen(onBack: () -> Unit) {
             )
         )
 
-        // USE CASE label
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 60.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                "USE CASE 4", color = Color(0xFF4CAF50),
-                fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp
-            )
-            Text("Physics Sandbox", color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Black)
-        }
+        ShowcaseHeader(
+            title = "Physics Sandbox",
+            subtitle = "Live-tune physics parameters",
+            label = "USE CASE 4",
+            color = Color(0xFF4CAF50),
+            onBack = onBack
+        )
 
-        BackBtn(onBack)
+
 
         // Controls card
         Card(
@@ -507,31 +550,51 @@ fun SandboxScreen(onBack: () -> Unit) {
                         HorizontalDivider(color = Color.White.copy(0.1f))
 
                         // Style selector
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                            stylesList.forEach { s ->
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                            items(stylesList) { s ->
                                 Button(
                                     onClick = { selectedStyle = s },
                                     shape = RoundedCornerShape(10.dp),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = if (selectedStyle == s) Color(0xFF4CAF50) else Color(0xFF1E1E2E)
                                     ),
-                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
-                                    modifier = Modifier.weight(1f)
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                 ) {
-                                    Text(s.name.replace("_", "\n"), fontSize = 8.sp, textAlign = TextAlign.Center, color = Color.White)
+                                    Text(s.name.replace("_", " "), fontSize = 10.sp, textAlign = TextAlign.Center, color = Color.White)
                                 }
                             }
                         }
 
-                        SandboxSlider("BLOBS", "$blobCount", blobCount.toFloat(), 2f..10f) { blobCount = it.toInt() }
-                        SandboxSlider("TOUCH INFLUENCE", "${(touchInfluence * 100).toInt()}%", touchInfluence, 0f..3f) { touchInfluence = it }
-                        SandboxSlider("SHAKE INFLUENCE", "${(shakeInfluence * 100).toInt()}%", shakeInfluence, 0f..3f) { shakeInfluence = it }
+                        // Viscosity selector
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                            viscosityList.forEach { v ->
+                                Button(
+                                    onClick = { viscosity = v },
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (viscosity == v) Color(0xFFE91E63) else Color(0xFF1E1E2E)
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(v.name.replace("_", " "), fontSize = 9.sp, textAlign = TextAlign.Center, color = Color.White)
+                                }
+                            }
+                        }
+
+                        SandboxSlider("BLOBS", "$blobCount", blobCount.toFloat(), 2f..20f) { blobCount = it.toInt() }
+                        SandboxSlider("BLOB SCALE", "%.1fx".format(blobScale), blobScale, 0.5f..2.5f) { blobScale = it }
                         SandboxSlider("ROTATION", "${lampRotation.toInt()}°", lampRotation, 0f..180f) { lampRotation = it }
+                        SandboxSlider("PULSE SPEED", "%.1fx".format(pulseSpeed), pulseSpeed, 0f..5f) { pulseSpeed = it }
 
                         HorizontalDivider(color = Color.White.copy(0.08f))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                            SandboxToggle("TOUCH", isInteractive) { isInteractive = it }
-                            SandboxToggle("SENSOR", isSensorReactive) { isSensorReactive = it }
+                            SandboxToggle("GRAVITY DOWN", gravityMode == LavaGravity.DOWN) { 
+                                gravityMode = if (it) LavaGravity.DOWN else LavaGravity.UP 
+                            }
+                            SandboxToggle("FLAT 2D", glassStyle == LavaGlassStyle.FLAT_2D) { 
+                                glassStyle = if (it) LavaGlassStyle.FLAT_2D else LavaGlassStyle.REALISTIC_3D 
+                            }
                             SandboxToggle("GRAIN", hasNoiseOverlay) { hasNoiseOverlay = it }
                         }
                     }
@@ -567,17 +630,33 @@ fun SandboxToggle(label: String, checked: Boolean, onChanged: (Boolean) -> Unit)
 }
 
 // =======================================================================
-// SHARED: Back Button
+// SHARED: Unified Header & Back Button
 // =======================================================================
 @Composable
-fun BoxScope.BackBtn(onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(0.55f)),
-        shape = RoundedCornerShape(14.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        modifier = Modifier.align(Alignment.TopStart).padding(top = 16.dp, start = 16.dp)
+fun BoxScope.ShowcaseHeader(title: String, subtitle: String, label: String, color: Color, onBack: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .align(Alignment.TopCenter)
+            .fillMaxWidth()
+            .padding(top = 48.dp, start = 16.dp, end = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("← Back", color = Color.White, fontSize = 13.sp)
+        Button(
+            onClick = onBack,
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(0.5f)),
+            shape = CircleShape,
+            contentPadding = PaddingValues(0.dp),
+            modifier = Modifier.size(44.dp)
+        ) {
+            Text("←", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        }
+        
+        Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(label, color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+            Text(title, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Black)
+            Text(subtitle, color = Color.White.copy(0.6f), fontSize = 11.sp)
+        }
+        
+        Spacer(modifier = Modifier.size(44.dp)) // Balances the back button width to keep text perfectly centered
     }
 }

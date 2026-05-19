@@ -61,6 +61,21 @@ enum class LavaLampStyle(val colors: List<Color>, val backgroundColor: Color, va
         colors = listOf(Color(0xFF00FFCC), Color(0xFF00FF66), Color(0xFF3399FF), Color(0xFF1A237E)),
         backgroundColor = Color(0xFF02070D),
         chamberBackdrop = Color(0xFF051D1F) // Deep teal inner glass glow
+    ),
+    CLASSIC_70S(
+        colors = listOf(Color(0xFFFFEE58), Color(0xFFFF9800), Color(0xFFFF5722), Color(0xFFE64A19)),
+        backgroundColor = Color(0xFF1A0A00),
+        chamberBackdrop = Color(0xFF331400) // Warm orange/red glow
+    ),
+    DEEP_OCEAN(
+        colors = listOf(Color(0xFF00BFFF), Color(0xFF1E90FF), Color(0xFF4169E1), Color(0xFF00008B)),
+        backgroundColor = Color(0xFF000511),
+        chamberBackdrop = Color(0xFF001133) // Deep blue bioluminescence
+    ),
+    COTTON_CANDY(
+        colors = listOf(Color(0xFFFFB6C1), Color(0xFFFF69B4), Color(0xFF87CEFA), Color(0xFFE0FFFF)),
+        backgroundColor = Color(0xFF1F1A24),
+        chamberBackdrop = Color(0xFF2D2338) // Soft pastel violet glow
     )
 }
 
@@ -120,6 +135,40 @@ enum class LavaContainerMode {
 }
 
 /**
+ * Defines the direction of physics gravity inside the chamber.
+ */
+enum class LavaGravity {
+    /** Buoyancy drives blobs up (Classic lava lamp behavior). */
+    UP,
+    /** Gravity pulls blobs down (Like raindrops or heavy falling wax). */
+    DOWN,
+    /** Zero gravity, blobs just drift and bounce slowly in space. */
+    ZERO_GRAVITY
+}
+
+/**
+ * Defines the visual rendering style of the glass bottle (if containerMode is GLASS_BOTTLE).
+ */
+enum class LavaGlassStyle {
+    /** Highly reflective, skeuomorphic glass and metallic caps (Default). */
+    REALISTIC_3D,
+    /** Flat, minimal silhouette vector style without gloss or shadows. */
+    FLAT_2D
+}
+
+/**
+ * Defines the viscosity of the fluid, altering how blobs merge and separate.
+ */
+enum class LavaViscosity {
+    /** Thin, fast-separating droplets. */
+    WATER,
+    /** Default lava lamp wax behavior. */
+    STANDARD,
+    /** Thick, sticky blobs that merge from far away and stretch heavily. */
+    THICK_HONEY
+}
+
+/**
  * Tuning parameters for the high-fidelity viscous fluid physics engine.
  */
 data class LavaPhysicsConfig(
@@ -134,13 +183,18 @@ data class LavaPhysicsConfig(
 fun LavaLamp(
     modifier: Modifier = Modifier,
     blobCount: Int = 10,
+    blobScale: Float = 1.0f,
     speed: Float = 1.0f,
     flowIntensity: Float = 0.5f,
     interactive: Boolean = true,
     sensorReactive: Boolean = true,
     noiseOverlay: Boolean = true,
     lampRotation: Float = 0f,
+    gravityMode: LavaGravity = LavaGravity.UP,
     containerMode: LavaContainerMode = LavaContainerMode.GLASS_BOTTLE,
+    glassStyle: LavaGlassStyle = LavaGlassStyle.REALISTIC_3D,
+    viscosity: LavaViscosity = LavaViscosity.STANDARD,
+    pulseSpeed: Float = 0f,
     mode: LavaMode = LavaMode.Vector(LavaLampStyle.CYBERPUNK),
     background: LavaBackground = LavaBackground.StyleBackdrop,
     physicsConfig: LavaPhysicsConfig = LavaPhysicsConfig()
@@ -548,8 +602,12 @@ fun LavaLamp(
                     blob.y = glassTop + Random.nextFloat() * lampHeight
                 }
 
-                // A. Vertical Buoyancy force (Density rule: Bubbles are lighter than the background liquid, so they always float UP)
-                val verticalBuoyancy = -110f
+                // A. Vertical Buoyancy / Gravity force
+                val verticalBuoyancy = when (gravityMode) {
+                    LavaGravity.UP -> -110f
+                    LavaGravity.DOWN -> 110f
+                    LavaGravity.ZERO_GRAVITY -> 0f
+                }
                 
                 // Gentle horizontal sin wave drift
                 val horizontalDrift = sin(time * 0.5f + blob.phaseX) * 20f
@@ -781,14 +839,20 @@ fun LavaLamp(
                                Build.DEVICE.contains("generic")
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !isEmulator) {
+                    val (blurRadius, alphaMul, alphaAdd) = when (viscosity) {
+                        LavaViscosity.WATER -> Triple(18f, 70f, -3500f)
+                        LavaViscosity.STANDARD -> Triple(32f, 45f, -2250f)
+                        LavaViscosity.THICK_HONEY -> Triple(50f, 30f, -1500f)
+                    }
+
                     val blur = android.graphics.RenderEffect.createBlurEffect(
-                        32f, 32f, android.graphics.Shader.TileMode.CLAMP
+                        blurRadius, blurRadius, android.graphics.Shader.TileMode.CLAMP
                     )
                     val matrix = floatArrayOf(
                         1f, 0f, 0f, 0f, 0f,
                         0f, 1f, 0f, 0f, 0f,
                         0f, 0f, 1f, 0f, 0f,
-                        0f, 0f, 0f, 45f, -2250f
+                        0f, 0f, 0f, alphaMul, alphaAdd
                     )
                     val colorFilter = android.graphics.RenderEffect.createColorFilterEffect(
                         ColorMatrixColorFilter(matrix)
@@ -848,7 +912,8 @@ fun LavaLamp(
                     blobs.forEach { blob ->
                         if (blob.x == -1f) return@forEach
 
-                        var radius = blob.baseRadius * (1f + 0.12f * sin(drawTime * blob.scaleSpeed + blob.scalePhase))
+                        val pulseFactor = if (pulseSpeed > 0f) (1f + 0.15f * sin(time * pulseSpeed)) else 1f
+                        var radius = blob.baseRadius * blobScale * pulseFactor * (1f + 0.12f * sin(drawTime * blob.scaleSpeed + blob.scalePhase))
 
                         if (blob.connectedBlobId != -1) {
                             val sibling = blobs.find { it.id == blob.connectedBlobId }
@@ -900,8 +965,8 @@ fun LavaLamp(
                 }
             }
 
-            // LAYER 3: Sharp Gloss reflections, metallic base and cap (only when bottle is shown)
-            if (containerMode == LavaContainerMode.GLASS_BOTTLE) {
+            // LAYER 3: Sharp Gloss reflections, metallic base and cap (only when bottle is shown and 3D style requested)
+            if (containerMode == LavaContainerMode.GLASS_BOTTLE && glassStyle == LavaGlassStyle.REALISTIC_3D) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 // A. Draw Curved Glass Reflex Highlights (drawn on top of blurred blobs!)
                 clipPath(glassPath) {
