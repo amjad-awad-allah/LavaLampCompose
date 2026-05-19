@@ -64,17 +64,19 @@ enum class LavaLampStyle(val colors: List<Color>, val backgroundColor: Color, va
     )
 }
 
+enum class FluidType { OIL, WATER }
+
 /**
  * Physics-Based Blob representing a real lava lamp bubble inside the glass chamber.
  */
 class LavaBlob(
     var color: Color, // Mutable color to update styles instantly in place
     val baseRadius: Float,
+    val type: FluidType,
     var x: Float = -1f,
     var y: Float = -1f,
     var vx: Float = 0f,
     var vy: Float = 0f,
-    var isRising: Boolean = true,
     val phaseX: Float = Random.nextFloat() * 2f * Math.PI.toFloat(),
     val scalePhase: Float = Random.nextFloat() * 2f * Math.PI.toFloat(),
     val scaleSpeed: Float = Random.nextFloat() * 0.3f + 0.1f,
@@ -248,7 +250,7 @@ fun LavaLamp(
                 LavaBlob(
                     color = activeColors[index % activeColors.size],
                     baseRadius = Random.nextFloat() * 25f + 70f,
-                    isRising = Random.nextBoolean(),
+                    type = if (index % 2 == 0) FluidType.OIL else FluidType.WATER,
                     imageIndex = index
                 )
             )
@@ -325,11 +327,11 @@ fun LavaLamp(
                                 LavaBlob(
                                     color = blob.color,
                                     baseRadius = newRadius,
+                                    type = blob.type,
                                     x = blob.x,
                                     y = blob.y,
                                     vx = -180f - Random.nextFloat() * 120f,
                                     vy = blob.vy + (Random.nextFloat() - 0.5f) * 120f,
-                                    isRising = Random.nextBoolean(),
                                     imageIndex = blob.imageIndex
                                 )
                             )
@@ -337,11 +339,11 @@ fun LavaLamp(
                                 LavaBlob(
                                     color = blob.color,
                                     baseRadius = newRadius,
+                                    type = blob.type,
                                     x = blob.x,
                                     y = blob.y,
                                     vx = 180f + Random.nextFloat() * 120f,
                                     vy = blob.vy + (Random.nextFloat() - 0.5f) * 120f,
-                                    isRising = Random.nextBoolean(),
                                     imageIndex = blob.imageIndex
                                 )
                             )
@@ -389,11 +391,11 @@ fun LavaLamp(
                                     val daughterBlob = LavaBlob(
                                         color = parent.color,
                                         baseRadius = daughterRadius,
+                                        type = parent.type,
                                         x = currentTouch.x,
                                         y = currentTouch.y,
                                         vx = touchVelocity.x,
                                         vy = touchVelocity.y,
-                                        isRising = parent.isRising,
                                         imageIndex = parent.imageIndex,
                                         connectedBlobId = parent.id,
                                         isAttachedToFinger = true
@@ -432,7 +434,7 @@ fun LavaLamp(
                                 if (displacement > 0) {
                                     val fx = (dx / dist) * displacement * springStrength
                                     val fy = (dy / dist) * displacement * springStrength
-                                    
+
                                     // Pull them back together like thick elastic mercury
                                     blobA.vx += fx * 15f
                                     blobA.vy += fy * 15f
@@ -454,7 +456,7 @@ fun LavaLamp(
                                 blobB.vx = touchVelocity.x * 0.7f
                                 blobB.vy = touchVelocity.y * 0.7f
                             }
-                            
+
                             // B. Re-Merge Snap-Back: If touch released and they snap back together, merge into one!
                             if (currentTouch == null && dist < blobA.baseRadius * 0.65f) {
                                 daughtersToRemove.add(blobB)
@@ -488,8 +490,14 @@ fun LavaLamp(
                     
                     if (dist < minDist && dist > 1f) {
                         val overlap = minDist - dist
-                        // Volumetric elastic fluid repulsion force
-                        val forceStrength = (overlap / minDist) * physicsConfig.softRepulsion
+                        // Interface Handling & Merging Rule
+                        val forceStrength = if (blobI.type != blobJ.type) {
+                            // Immiscible Liquids (Oil & Water) do not merge, apply strong surface tension repulsion
+                            (overlap / minDist) * physicsConfig.softRepulsion * 3.5f
+                        } else {
+                            // Same liquid type can merge, soft elastic repulsion
+                            (overlap / minDist) * physicsConfig.softRepulsion
+                        }
                         
                         val pushX = (dx / dist) * forceStrength
                         val pushY = (dy / dist) * forceStrength
@@ -518,8 +526,9 @@ fun LavaLamp(
                     blob.y = glassBottom - Random.nextFloat() * (lampHeight * 0.7f)
                 }
 
-                // A. Vertical Buoyancy force (convection)
-                val verticalBuoyancy = if (blob.isRising) -80f else 80f
+                // A. Vertical Buoyancy force (Separation by Density)
+                // Oil (low density) rises, Water (high density) sinks
+                val verticalBuoyancy = if (blob.type == FluidType.OIL) -110f else 110f
                 
                 // Gentle horizontal sin wave drift
                 val horizontalDrift = sin(time * 0.5f + blob.phaseX) * 20f
@@ -540,7 +549,7 @@ fun LavaLamp(
                         val dist = hypot(dx, dy)
                         
                         // 1. Soft Magnetic Attraction (Pulls liquid gently to look viscous, not violent)
-                        val influenceRadius = lampWidth * 1.3f 
+                        val influenceRadius = lampWidth * 1.3f
                         if (dist < influenceRadius && dist > 5f) {
                             val pullFactor = (1f - dist / influenceRadius)
                             val strength = pullFactor * 160f // Reduced from 450f for thick liquid cohesion
@@ -549,7 +558,7 @@ fun LavaLamp(
                         }
                         
                         // 2. Strong Swipe Momentum (Fluid flow created by finger drag)
-                        val dragRadius = lampWidth * 1.2f 
+                        val dragRadius = lampWidth * 1.2f
                         if (dist < dragRadius && touchVelocity != Offset.Zero) {
                             val dragFactor = (1f - dist / dragRadius)
                             dragForceX = touchVelocity.x * dragFactor * 0.45f // Increased to 0.45f for strong swipe impact!
@@ -576,15 +585,6 @@ fun LavaLamp(
 
                 // F. Dynamic breathing size
                 val currentRadius = blob.baseRadius * (1f + 0.12f * sin(time * blob.scaleSpeed + blob.scalePhase))
-
-                // G. Switch direction when hitting top/bottom cooling zones of the glass
-                val coolingThresholdTop = glassTop + currentRadius + 20f
-                val coolingThresholdBottom = glassBottom - currentRadius - 20f
-                if (blob.y < coolingThresholdTop) {
-                    blob.isRising = false
-                } else if (blob.y > coolingThresholdBottom) {
-                    blob.isRising = true
-                }
 
                 // H. Strict horizontal boundary collision (Keep strictly within glass tapered width!)
                 val relativeHeightProgress = (blob.y - glassTop) / lampHeight
@@ -746,36 +746,44 @@ fun LavaLamp(
                 }
             }
 
-            // LAYER 2: Isolated Fluid Metaball Liquid Blobs (Isolated graphicsLayer for absolute safety!)
+            // Helper function for graphicsLayer modifier to avoid repeating the RenderEffect code
+            val metaballGraphicsLayer: androidx.compose.ui.graphics.GraphicsLayerScope.() -> Unit = {
+                val isEmulator = Build.FINGERPRINT.contains("generic") ||
+                               Build.FINGERPRINT.contains("unknown") ||
+                               Build.MODEL.contains("google_sdk") ||
+                               Build.MODEL.contains("Emulator") ||
+                               Build.MODEL.contains("Android SDK built for x86") ||
+                               Build.BRAND.contains("generic") ||
+                               Build.DEVICE.contains("generic")
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !isEmulator) {
+                    val blur = android.graphics.RenderEffect.createBlurEffect(
+                        32f, 32f, android.graphics.Shader.TileMode.CLAMP
+                    )
+                    val matrix = floatArrayOf(
+                        1f, 0f, 0f, 0f, 0f,
+                        0f, 1f, 0f, 0f, 0f,
+                        0f, 0f, 1f, 0f, 0f,
+                        0f, 0f, 0f, 45f, -2250f
+                    )
+                    val colorFilter = android.graphics.RenderEffect.createColorFilterEffect(
+                        ColorMatrixColorFilter(matrix)
+                    )
+                    renderEffect = android.graphics.RenderEffect.createChainEffect(colorFilter, blur)
+                        .asComposeRenderEffect()
+                }
+            }
+
+            // LAYER 2A: WATER Blobs (High density, sinks to bottom)
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
                     .then(pointerModifier)
-                    .graphicsLayer {
-                        // Apply highly stable, optimized Blur + Alpha Thresholding ONLY to the blobs!
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            val blur = android.graphics.RenderEffect.createBlurEffect(
-                                26f, 26f, android.graphics.Shader.TileMode.CLAMP // Larger blur envelope for gooey fluid merging!
-                            )
-                            val matrix = floatArrayOf(
-                                1f, 0f, 0f, 0f, 0f,
-                                0f, 1f, 0f, 0f, 0f,
-                                0f, 0f, 1f, 0f, 0f,
-                                0f, 0f, 0f, 20f, -900f // Balanced high-contrast threshold for smooth viscous wax boundaries
-                            )
-                            val colorFilter = android.graphics.RenderEffect.createColorFilterEffect(
-                                ColorMatrixColorFilter(matrix)
-                            )
-                            renderEffect = android.graphics.RenderEffect.createChainEffect(colorFilter, blur)
-                                .asComposeRenderEffect()
-                        }
-                    }
+                    .graphicsLayer(block = metaballGraphicsLayer)
             ) {
-                // Force Compose snapshot system to observe 'time' state so this Canvas ALWAYS invalidates and redraws during animation ticks
                 val drawTime = time
-
                 clipPath(glassPath) {
-                    // A. Draw Tapered Glowing Bottom Reservoir (Hot wax pool in base)
+                    // Bottom Reservoir (Water pool in base)
                     val bottomPoolRadius = lampWidth * 0.45f
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -791,7 +799,47 @@ fun LavaLamp(
                         blendMode = BlendMode.SrcOver
                     )
 
-                    // B. Draw Tapered Glowing Top Reservoir (Cooling wax pool in top cap)
+                    blobs.filter { it.type == FluidType.WATER }.forEach { blob ->
+                        if (blob.x == -1f) return@forEach
+                        var radius = blob.baseRadius * (1f + 0.12f * sin(time * blob.scaleSpeed + blob.scalePhase))
+                        if (blob.connectedBlobId != -1) {
+                            val sibling = blobs.find { it.id == blob.connectedBlobId }
+                            if (sibling != null) {
+                                val dx = sibling.x - blob.x
+                                val dy = sibling.y - blob.y
+                                val dist = hypot(dx, dy)
+                                val limit = blob.baseRadius * 2.3f
+                                val stretchRatio = (dist / limit).coerceIn(0f, 1f)
+                                radius *= (1.0f - stretchRatio * 0.28f)
+                            }
+                        }
+                        if (blob.snapRecoilTime != -1f) {
+                            val t = blob.snapRecoilTime
+                            val recoilScale = 1f - 0.24f * kotlin.math.cos(t * 16f) * kotlin.math.exp(-t * 4.5f)
+                            radius *= recoilScale
+                        }
+                        if (blobImages != null && blobImages.isNotEmpty()) {
+                            val bitmap = blobImages[blob.imageIndex % blobImages.size]
+                            drawImage(image = bitmap, dstOffset = IntOffset((blob.x - radius).toInt(), (blob.y - radius).toInt()), dstSize = IntSize((radius * 2).toInt(), (radius * 2).toInt()))
+                        } else {
+                            drawCircle(
+                                brush = Brush.radialGradient(0.0f to blob.color, 0.45f to blob.color, 0.75f to blob.color.copy(alpha = 0.7f), 1.0f to Color.Transparent, center = Offset(blob.x, blob.y), radius = radius),
+                                radius = radius, center = Offset(blob.x, blob.y), blendMode = BlendMode.SrcOver
+                            )
+                        }
+                    }
+                }
+            }
+
+            // LAYER 2B: OIL Blobs (Low density, floats to top)
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(block = metaballGraphicsLayer)
+            ) {
+                val drawTime = time
+                clipPath(glassPath) {
+                    // Top Reservoir (Oil pool in cap)
                     val topPoolRadius = lampWidth * 0.32f
                     drawCircle(
                         brush = Brush.radialGradient(
@@ -807,14 +855,9 @@ fun LavaLamp(
                         blendMode = BlendMode.SrcOver
                     )
 
-                    // C. Draw Floating Dynamic Physics-Based Blobs inside the glass
-                    blobs.forEach { blob ->
+                    blobs.filter { it.type == FluidType.OIL }.forEach { blob ->
                         if (blob.x == -1f) return@forEach
-
-                        // 1. Calculate dynamic scale breathing radius
                         var radius = blob.baseRadius * (1f + 0.12f * sin(time * blob.scaleSpeed + blob.scalePhase))
-
-                        // 2. Dynamic Neck Thinning: If stretching, slim the radii down as distance grows to conserve volume and make the neck gooey!
                         if (blob.connectedBlobId != -1) {
                             val sibling = blobs.find { it.id == blob.connectedBlobId }
                             if (sibling != null) {
@@ -823,40 +866,21 @@ fun LavaLamp(
                                 val dist = hypot(dx, dy)
                                 val limit = blob.baseRadius * 2.3f
                                 val stretchRatio = (dist / limit).coerceIn(0f, 1f)
-                                // Slim down by up to 28% to physically thin the neck
                                 radius *= (1.0f - stretchRatio * 0.28f)
                             }
                         }
-
-                        // 3. Post-Pinch-Off Springy Recoil oscillation scale (surface tension snap wobble)
                         if (blob.snapRecoilTime != -1f) {
                             val t = blob.snapRecoilTime
                             val recoilScale = 1f - 0.24f * kotlin.math.cos(t * 16f) * kotlin.math.exp(-t * 4.5f)
                             radius *= recoilScale
                         }
-
                         if (blobImages != null && blobImages.isNotEmpty()) {
-                            // Scale and render custom PNG image asset
                             val bitmap = blobImages[blob.imageIndex % blobImages.size]
-                            drawImage(
-                                image = bitmap,
-                                dstOffset = IntOffset((blob.x - radius).toInt(), (blob.y - radius).toInt()),
-                                dstSize = IntSize((radius * 2).toInt(), (radius * 2).toInt())
-                            )
+                            drawImage(image = bitmap, dstOffset = IntOffset((blob.x - radius).toInt(), (blob.y - radius).toInt()), dstSize = IntSize((radius * 2).toInt(), (radius * 2).toInt()))
                         } else {
-                            // Fallback to programmatic glowing gradient metaball vector circles
                             drawCircle(
-                                brush = Brush.radialGradient(
-                                    0.0f to blob.color,
-                                    0.45f to blob.color,
-                                    0.75f to blob.color.copy(alpha = 0.7f),
-                                    1.0f to Color.Transparent,
-                                    center = Offset(blob.x, blob.y),
-                                    radius = radius
-                                ),
-                                radius = radius,
-                                center = Offset(blob.x, blob.y),
-                                blendMode = BlendMode.SrcOver
+                                brush = Brush.radialGradient(0.0f to blob.color, 0.45f to blob.color, 0.75f to blob.color.copy(alpha = 0.7f), 1.0f to Color.Transparent, center = Offset(blob.x, blob.y), radius = radius),
+                                radius = radius, center = Offset(blob.x, blob.y), blendMode = BlendMode.SrcOver
                             )
                         }
                     }

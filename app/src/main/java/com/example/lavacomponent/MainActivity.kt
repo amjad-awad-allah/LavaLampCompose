@@ -1,5 +1,5 @@
 package com.example.lavacomponent
- 
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -51,16 +51,16 @@ fun createEmojiBitmap(text: String, size: Int): ImageBitmap {
 fun createChamberBackgroundBitmap(width: Int, height: Int): ImageBitmap {
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     val canvas = android.graphics.Canvas(bitmap)
-    
+
     // Draw deep neon night chamber background
     canvas.drawColor(android.graphics.Color.parseColor("#0F0A24"))
-    
+
     val paint = android.graphics.Paint().apply {
         isAntiAlias = true
         color = android.graphics.Color.parseColor("#341C61")
         strokeWidth = 3f
     }
-    
+
     // Draw horizontal grid lines
     for (i in 0..height step 40) {
         canvas.drawLine(0f, i.toFloat(), width.toFloat(), i.toFloat(), paint)
@@ -78,7 +78,7 @@ fun createChamberBackgroundBitmap(width: Int, height: Int): ImageBitmap {
         strokeWidth = 10f
     }
     canvas.drawCircle(width / 2f, height / 2f, 100f, glowPaint)
-    
+
     return bitmap.asImageBitmap()
 }
 
@@ -158,7 +158,7 @@ class MainActivity : ComponentActivity() {
             val customWholeBgBitmap = remember {
                 createWholeBackgroundBitmap(800, 1600)
             }
- 
+
             // Safe list of styles to avoid any array retrieval bugs
             val stylesList = remember {
                 listOf(
@@ -168,7 +168,7 @@ class MainActivity : ComponentActivity() {
                     LavaLampStyle.AURORA_FOREST
                 )
             }
- 
+
             Box(modifier = Modifier.fillMaxSize()) {
                 // 1. The Dynamic Lava Lamp Background (Perfect liquid metaballs & clean API)
                 val currentMode = if (useCustomPNGs) {
@@ -176,7 +176,7 @@ class MainActivity : ComponentActivity() {
                 } else {
                     LavaMode.Vector(selectedStyle)
                 }
- 
+
                 val currentBackground = when {
                     useCustomChamberBg || useCustomWholeBg -> {
                         LavaBackground.Custom(
@@ -186,7 +186,7 @@ class MainActivity : ComponentActivity() {
                     }
                     else -> LavaBackground.StyleBackdrop
                 }
- 
+
                 LavaLamp(
                     modifier = Modifier.fillMaxSize(),
                     blobCount = blobCount,
@@ -213,7 +213,7 @@ class MainActivity : ComponentActivity() {
                         .fillMaxWidth()
                         .wrapContentHeight()
                         // INTERCEPT ALL TOUCHES so clicking control sliders/switches never propagates to background Canvas
-                        .pointerInput(Unit) {} 
+                        .pointerInput(Unit) {}
                 ) {
                     Column(
                         modifier = Modifier.padding(20.dp),
@@ -231,15 +231,15 @@ class MainActivity : ComponentActivity() {
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.ExtraBold
                             )
-                            
+
                             // Expand/Collapse Button using standard elegant text arrows
                             IconButton(
                                 onClick = { isExpanded = !isExpanded },
                                 modifier = Modifier.size(36.dp)
                             ) {
                                 Text(
-                                    text = if (isExpanded) "▼" else "▲", 
-                                    color = Color(0xFF00FFFF), 
+                                    text = if (isExpanded) "▼" else "▲",
+                                    color = Color(0xFF00FFFF),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 18.sp
                                 )
@@ -257,9 +257,9 @@ class MainActivity : ComponentActivity() {
                                 // A. Curved Style Selector Buttons
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(
-                                        text = "LAVA STYLE PRESET", 
-                                        color = Color.White.copy(alpha = 0.6f), 
-                                        fontSize = 10.sp, 
+                                        text = "LAVA STYLE PRESET",
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         letterSpacing = 1.sp
                                     )
@@ -298,16 +298,16 @@ class MainActivity : ComponentActivity() {
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "FLOW INTENSITY", 
-                                            color = Color.White.copy(alpha = 0.6f), 
-                                            fontSize = 10.sp, 
+                                            text = "FLOW INTENSITY",
+                                            color = Color.White.copy(alpha = 0.6f),
+                                            fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
                                             letterSpacing = 1.sp
                                         )
                                         Text(
-                                            text = "${(flowIntensity * 100).toInt()}%", 
-                                            color = Color(0xFF00FFFF), 
-                                            fontSize = 12.sp, 
+                                            text = "${(flowIntensity * 100).toInt()}%",
+                                            color = Color(0xFF00FFFF),
+                                            fontSize = 12.sp,
                                             fontWeight = FontWeight.Black
                                         )
                                     }
@@ -330,16 +330,16 @@ class MainActivity : ComponentActivity() {
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "BLOB DENSITY (COUNT)", 
-                                            color = Color.White.copy(alpha = 0.6f), 
-                                            fontSize = 10.sp, 
+                                            text = "BLOB DENSITY (COUNT)",
+                                            color = Color.White.copy(alpha = 0.6f),
+                                            fontSize = 10.sp,
                                             fontWeight = FontWeight.Bold,
                                             letterSpacing = 1.sp
                                         )
                                         Text(
-                                            text = "$blobCount Blobs", 
-                                            color = Color(0xFF00FFFF), 
-                                            fontSize = 12.sp, 
+                                            text = "$blobCount Blobs",
+                                            color = Color(0xFF00FFFF),
+                                            fontSize = 12.sp,
                                             fontWeight = FontWeight.Black
                                         )
                                     }
