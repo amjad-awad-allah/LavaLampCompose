@@ -6,7 +6,7 @@ plugins {
 // Library Artifact Metadata for JitPack/Maven Central Publishing
 val libraryGroupId = "com.example.lavalamp"
 val libraryArtifactId = "lavalamp"
-val libraryVersion = "1.0.0"
+val libraryVersion = "2.0.0"
 
 android {
     namespace = "com.example.lavalamp"

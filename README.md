@@ -2,7 +2,7 @@
 
 [![Build Status](https://img.shields.io/badge/Android-100%25%20Build%20Successful-brightgreen.svg?style=for-the-badge&logo=android)](https://developer.android.com)
 [![Platform](https://img.shields.io/badge/Compose-v2026.05.00-purple.svg?style=for-the-badge&logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
-[![Release Version](https://img.shields.io/badge/Release-v1.7.1-blue.svg?style=for-the-badge&logo=github)](https://github.com/amjad-awad-allah/LavaLampCompose)
+[![Release Version](https://img.shields.io/badge/Release-v2.0.0-blue.svg?style=for-the-badge&logo=github)](https://github.com/amjad-awad-allah/LavaLampCompose)
 [![License](https://img.shields.io/badge/License-MIT-orange.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 **LavaLamp** is a premium, high-fidelity, viscous fluid physics simulation library designed exclusively for **Jetpack Compose**. It brings beautiful organic fluid metaballs, glass tapered chambers, and tactile physics displacement to Android with state-of-the-art GPU optimizations.
@@ -21,7 +21,7 @@
 
 ## 📦 Installation & Versioning
 
-You can integrate this library directly into any Android application using **JitPack** and the GitHub release tag **`1.0.0`**.
+You can integrate this library directly into any Android application using **JitPack** and the GitHub release tag **`2.0.0`**.
 
 ### 1. Register JitPack Repository
 Add the JitPack maven repository to your root project's `settings.gradle.kts` file:
@@ -42,7 +42,7 @@ Add the dependency to your app's `build.gradle.kts` file:
 
 ```kotlin
 dependencies {
-    implementation("com.github.amjad-awad-allah:LavaLampCompose:1.0.0")
+    implementation("com.github.amjad-awad-allah:LavaLampCompose:2.0.0")
 }
 ```
 
@@ -104,10 +104,13 @@ fun PremiumLavaScreen() {
         flowIntensity = 0.5f,
         mode = LavaMode.Vector(LavaLampStyle.CYBERPUNK),
         background = LavaBackground.StyleBackdrop,
+        lampRotation = 0f,
         physicsConfig = LavaPhysicsConfig(
             damping = 0.95f,
             softRepulsion = 120f,
-            smoothingWeight = 0.05f
+            smoothingWeight = 0.05f,
+            touchInfluence = 1.0f,
+            shakeInfluence = 1.0f
         )
     )
 }
@@ -126,6 +129,7 @@ fun PremiumLavaScreen() {
 | interactive | Boolean | true | Touch interaction |
 | sensorReactive | Boolean | true | Motion sensor support |
 | noiseOverlay | Boolean | true | Film grain effect |
+| lampRotation | Float | 0f | Inverts Gravity |
 | mode | LavaMode | Vector(CYBERPUNK) | Rendering mode |
 | background | LavaBackground | StyleBackdrop | Background style |
 | physicsConfig | LavaPhysicsConfig | default | Physics tuning |
@@ -173,6 +177,13 @@ All layouts adapt dynamically using Compose size awareness.
 ---
 
 ## 📅 Changelog
+
+### [v2.0.0] - 2026-05-19
+- **Physics Revamp**: Replaced Multi-Phase density separation with unified Volumetric SPH Cohesion Physics Engine (surface tension).
+- **Constant Buoyancy**: Fluid blobs now always float up based on uniform density.
+- **Gravity Inversion**: Added `lampRotation` API for inverting the fluid flow like an hourglass.
+- **Tuning Config**: Added `touchInfluence` and `shakeInfluence` to `LavaPhysicsConfig`.
+- **Sandbox UX**: Extended test Sandbox to support live slider tuning for new physics parameters.
 
 ### [v1.7.1] - 2026-05-18
 - Initial stable release

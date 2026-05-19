@@ -125,6 +125,9 @@ class MainActivity : ComponentActivity() {
             var selectedStyle by remember { mutableStateOf(LavaLampStyle.CYBERPUNK) }
             var flowIntensity by remember { mutableFloatStateOf(0.4f) }
             var blobCount by remember { mutableIntStateOf(5) }
+            var touchInfluence by remember { mutableFloatStateOf(1.0f) }
+            var shakeInfluence by remember { mutableFloatStateOf(1.0f) }
+            var lampRotation by remember { mutableFloatStateOf(0f) }
             var isInteractive by remember { mutableStateOf(true) }
             var isSensorReactive by remember { mutableStateOf(false) }
             var hasNoiseOverlay by remember { mutableStateOf(true) }
@@ -195,9 +198,13 @@ class MainActivity : ComponentActivity() {
                     interactive = isInteractive,
                     sensorReactive = isSensorReactive,
                     noiseOverlay = hasNoiseOverlay,
+                    lampRotation = lampRotation,
                     mode = currentMode,
                     background = currentBackground,
-                    physicsConfig = LavaPhysicsConfig()
+                    physicsConfig = LavaPhysicsConfig(
+                        touchInfluence = touchInfluence,
+                        shakeInfluence = shakeInfluence
+                    )
                 )
 
                 // 2. High-Contrast Overlay Card with absolute input protection and COLLAPSE support
@@ -348,6 +355,105 @@ class MainActivity : ComponentActivity() {
                                         onValueChange = { blobCount = it.toInt() },
                                         valueRange = 2f..10f,
                                         steps = 7, // Even integer steps for 2, 3, 4, 5, 6, 7, 8, 9, 10
+                                        colors = SliderDefaults.colors(
+                                            thumbColor = Color(0xFF8A2BE2),
+                                            activeTrackColor = Color(0xFF8A2BE2).copy(alpha = 0.6f),
+                                            inactiveTrackColor = Color(0xFF232336)
+                                        )
+                                    )
+                                }
+
+                                // D. Touch Influence Slider
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "TOUCH INFLUENCE",
+                                            color = Color.White.copy(alpha = 0.6f),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 1.sp
+                                        )
+                                        Text(
+                                            text = "${(touchInfluence * 100).toInt()}%",
+                                            color = Color(0xFF00FFFF),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Black
+                                        )
+                                    }
+                                    Slider(
+                                        value = touchInfluence,
+                                        onValueChange = { touchInfluence = it },
+                                        valueRange = 0f..3f,
+                                        colors = SliderDefaults.colors(
+                                            thumbColor = Color(0xFF8A2BE2),
+                                            activeTrackColor = Color(0xFF8A2BE2).copy(alpha = 0.6f),
+                                            inactiveTrackColor = Color(0xFF232336)
+                                        )
+                                    )
+                                }
+
+                                // E. Shake Influence Slider
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "SHAKE INFLUENCE",
+                                            color = Color.White.copy(alpha = 0.6f),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 1.sp
+                                        )
+                                        Text(
+                                            text = "${(shakeInfluence * 100).toInt()}%",
+                                            color = Color(0xFF00FFFF),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Black
+                                        )
+                                    }
+                                    Slider(
+                                        value = shakeInfluence,
+                                        onValueChange = { shakeInfluence = it },
+                                        valueRange = 0f..3f,
+                                        colors = SliderDefaults.colors(
+                                            thumbColor = Color(0xFF8A2BE2),
+                                            activeTrackColor = Color(0xFF8A2BE2).copy(alpha = 0.6f),
+                                            inactiveTrackColor = Color(0xFF232336)
+                                        )
+                                    )
+                                }
+
+                                // F. Lamp Rotation (Gravity Inversion) Slider
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "LAMP ROTATION",
+                                            color = Color.White.copy(alpha = 0.6f),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 1.sp
+                                        )
+                                        Text(
+                                            text = "${lampRotation.toInt()}°",
+                                            color = Color(0xFF00FFFF),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Black
+                                        )
+                                    }
+                                    Slider(
+                                        value = lampRotation,
+                                        onValueChange = { lampRotation = it },
+                                        valueRange = 0f..180f,
                                         colors = SliderDefaults.colors(
                                             thumbColor = Color(0xFF8A2BE2),
                                             activeTrackColor = Color(0xFF8A2BE2).copy(alpha = 0.6f),
