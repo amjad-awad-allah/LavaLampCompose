@@ -9,6 +9,16 @@
 
 ---
 
+## 🎬 Demo Preview
+
+<p align="center">
+  <img src="media/1.gif" width="250"/>
+  <img src="media/2.gif" width="250"/>
+  <img src="media/3.gif" width="250"/>
+</p>
+
+---
+
 ## 📦 Installation & Versioning
 
 You can integrate this library directly into any Android application using **JitPack** and the GitHub release tag **`1.0.0`**.
@@ -22,7 +32,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://jitpack.io") } // <-- Add this line
+        maven { url = uri("https://jitpack.io") }
     }
 }
 ```
@@ -32,7 +42,6 @@ Add the dependency to your app's `build.gradle.kts` file:
 
 ```kotlin
 dependencies {
-    // Exact release version for remote JitPack implementation
     implementation("com.github.amjad-awad-allah:LavaLampCompose:1.0.0")
 }
 ```
@@ -46,10 +55,10 @@ dependencies {
 - ⚡ **4x GPU Optimization**: Renders continuous real-time Skia Gaussian blurs at a buttery-smooth **60 FPS** on both high-end and budget/low-end devices.
 - 🎨 **Ultimate Customizability**: Supports vector gradients, style presets, custom colors, layered backgrounds, and custom PNG images/emojis as wax textures.
 - 🧯 **Enterprise-Grade Edge Cases**:
-  - **Lifecycle Awareness**: Auto-throttles physics updates when the app goes into the background.
-  - **Hardware Battery Protection**: Auto-unregisters accelerometer sensor listeners when paused.
-  - **Memory Leak Protection**: Explicit native recycling of generated bitmaps.
-  - **Responsive Layouts**: Dynamically fits rotated screens and layout dimensions.
+  - Lifecycle Awareness: Auto-throttles physics updates when the app goes into the background.
+  - Hardware Battery Protection: Auto-unregisters accelerometer sensor listeners when paused.
+  - Memory Leak Protection: Explicit native recycling of generated bitmaps.
+  - Responsive Layouts: Dynamically fits rotated screens and layout dimensions.
 
 ---
 
@@ -96,9 +105,9 @@ fun PremiumLavaScreen() {
         mode = LavaMode.Vector(LavaLampStyle.CYBERPUNK),
         background = LavaBackground.StyleBackdrop,
         physicsConfig = LavaPhysicsConfig(
-            damping = 0.95f,       // Fluid inertia drag (viscosity)
-            softRepulsion = 120f,   // Collision repulsion strength
-            smoothingWeight = 0.05f // Interpolation movement smoothing
+            damping = 0.95f,
+            softRepulsion = 120f,
+            smoothingWeight = 0.05f
         )
     )
 }
@@ -108,26 +117,22 @@ fun PremiumLavaScreen() {
 
 ## 🧩 Comprehensive API Parameters
 
-The `LavaLamp` composable accepts the following configuration parameters:
-
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| **`modifier`** | `Modifier` | `Modifier` | Layout modifier to control layout sizes. |
-| **`blobCount`** | `Int` | `6` | Total count of floating wax bubbles. |
-| **`speed`** | `Float` | `1.0f` | Speed factor of the physical clock update loop. |
-| **`flowIntensity`**| `Float` | `0.5f` | Convection hot/cold convection fluid strength. |
-| **`interactive`** | `Boolean` | `true` | Enables touch-to-attract and touch-to-pop actions. |
-| **`sensorReactive`**| `Boolean` | `true` | Enables tilt sliding (gravity) and vigorous phone-shake bubble splitting. |
-| **`noiseOverlay`** | `Boolean` | `true` | Renders a tactile cinema matte-finish noise layer. |
-| **`mode`** | `LavaMode` | `Vector(CYBERPUNK)`| Blob rendering: `Vector` (gradients) or `Png` (custom images/emojis). |
-| **`background`** | `LavaBackground`| `StyleBackdrop` | Backdrops: `StyleBackdrop`, `Transparent`, or `Custom(chamberBg, wholeBg)`. |
-| **`physicsConfig`**| `LavaPhysicsConfig`| `LavaPhysicsConfig()`| Custom viscous tuning parameter wrapper. |
+| modifier | Modifier | Modifier | Layout modifier |
+| blobCount | Int | 6 | Number of blobs |
+| speed | Float | 1.0f | Animation speed |
+| flowIntensity | Float | 0.5f | Fluid flow strength |
+| interactive | Boolean | true | Touch interaction |
+| sensorReactive | Boolean | true | Motion sensor support |
+| noiseOverlay | Boolean | true | Film grain effect |
+| mode | LavaMode | Vector(CYBERPUNK) | Rendering mode |
+| background | LavaBackground | StyleBackdrop | Background style |
+| physicsConfig | LavaPhysicsConfig | default | Physics tuning |
 
 ---
 
-## 🎨 Custom PNG Images Mode (Metaballs Blending)
-
-To blend custom PNG assets or emojis as liquid blobs inside the glass chamber:
+## 🎨 Custom PNG Images Mode
 
 ```kotlin
 val emojiBitmaps = remember {
@@ -148,25 +153,20 @@ LavaLamp(
 
 ## 🧯 Edge Cases & Production Readiness
 
-### 1. 🔋 Zero Battery Drain in Background
-When your app is paused (screen locked or in background), the library:
-- **Freezes Physics Math**: Skips calculation updates entirely.
-- **Unregisters Accelerometer Sensor**: Instantly releases system sensors via lifecycle observers, avoiding background permission warnings.
+### 🔋 Background Safety
+Physics pauses automatically and sensors are unregistered.
 
-### 2. 🧠 No Memory Leaks (AAR Safe)
-Generated bitmaps (such as the cinema noise overlay) are explicitly recycled when the Composable disposes to keep memory overhead at exactly **0%** when closed.
+### 🧠 Memory Safety
+Bitmaps are recycled on dispose to prevent leaks.
 
-### 3. 🔄 Robust Screen Rotations
-All glass paths and boundary limits are calculated using dynamic Compose dimensions (`onSizeChanged`). Rotating your device from portrait to landscape maintains perfect tapered boundaries with zero stretching.
+### 🔄 Rotation Handling
+All layouts adapt dynamically using Compose size awareness.
 
 ---
 
 ## 📜 Proguard Rules
 
-If you are minifying your release build, keep Compose graphics layers safe by adding this to your `proguard-rules.pro`:
-
 ```proguard
-# Keep compose graphics render effects safe
 -keepclassmembers class androidx.compose.ui.graphics.** { *; }
 ```
 
@@ -175,23 +175,23 @@ If you are minifying your release build, keep Compose graphics layers safe by ad
 ## 📅 Changelog
 
 ### [v1.0.0] - 2026-05-18
-- **Initial Stable Release** 🌋
-- Independent `:lavalamp` library module architecture.
-- Volumetric soft collision push physics engine.
-- 4x rendering speed blur performance tuning (60fps guaranteed).
-- Dynamic sensor registration and lifecycle pause/resume safety.
-- Native allocated bitmap memory auto-recycling.
-
+- Initial stable release
+- Fluid physics engine
+- GPU blur optimization
+- Sensor integration
+- Memory safety layer
 
 ---
 
 ## 📬 Contact
-- **LinkedIn**: [amjad-awad-allah](https://www.linkedin.com/in/amjad-awad-allah)
-- **Email**: [amjad.awadallah93@gmail.com](mailto:amjad.awadallah93@gmail.com)
-- **Webseit**:  [amjadawadallah.com](https://amjadawadallah.com/)
-- **GitHub**: [@amjad-awad-allah](https://github.com/amjad-awad-allah)
 
+- LinkedIn: https://www.linkedin.com/in/amjad-awad-allah
+- Email: amjad.awadallah93@gmail.com
+- Website: https://amjadawadallah.com/
+- GitHub: https://github.com/amjad-awad-allah
+
+---
 
 ## 📄 License
 
-This library is licensed under the **MIT License**. Build, package, customize, and monetize! 🌋
+MIT License
