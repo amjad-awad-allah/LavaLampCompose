@@ -2,7 +2,7 @@
 
 [![Build Status](https://img.shields.io/badge/Android-100%25%20Build%20Successful-brightgreen.svg?style=for-the-badge&logo=android)](https://developer.android.com)
 [![Platform](https://img.shields.io/badge/Compose-v2026.05.00-purple.svg?style=for-the-badge&logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
-[![Release Version](https://img.shields.io/badge/Release-v1.0.0-blue.svg?style=for-the-badge&logo=github)](https://github.com/amjad-awad-allah/LavaLampCompose)
+[![Release Version](https://img.shields.io/badge/Release-v1.7.1-blue.svg?style=for-the-badge&logo=github)](https://github.com/amjad-awad-allah/LavaLampCompose)
 [![License](https://img.shields.io/badge/License-MIT-orange.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 **LavaLamp** is a premium, high-fidelity, viscous fluid physics simulation library designed exclusively for **Jetpack Compose**. It brings beautiful organic fluid metaballs, glass tapered chambers, and tactile physics displacement to Android with state-of-the-art GPU optimizations.
@@ -174,7 +174,7 @@ All layouts adapt dynamically using Compose size awareness.
 
 ## 📅 Changelog
 
-### [v1.0.0] - 2026-05-18
+### [v1.7.1] - 2026-05-18
 - Initial stable release
 - Fluid physics engine
 - GPU blur optimization
