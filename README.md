@@ -9,13 +9,16 @@
 
 ---
 
-## 🎬 Demo Preview
+## 🎬 Demo Preview & Companion App
 
 <p align="center">
   <img src="media/1.gif" width="250"/>
   <img src="media/2.gif" width="250"/>
   <img src="media/3.gif" width="250"/>
 </p>
+
+> 💡 **Companion Showcase App Included!**
+> This repository contains a full **Showcase Application** (`app` module) designed specifically to explain and demonstrate the library's capabilities. Clone the repo and run the app to explore interactive examples of Splash Screens, Background Modes, Custom PNG Objects, and a live Physics Sandbox!
 
 ---
 
@@ -118,18 +121,77 @@ fun PremiumLavaScreen() {
 
 ---
 
+## 💡 Popular Use Cases
+
+### 1. Immersive Splash Screen / Loading Screen
+You can use `LavaLamp` as a captivating full-screen animation while loading data. Place your logo on top using a `Box`:
+
+```kotlin
+Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    // 1. The Liquid Physics Background
+    LavaLamp(
+        modifier = Modifier.fillMaxSize(),
+        flowIntensity = 0.8f,
+        containerMode = LavaContainerMode.AMBIENT_BACKGROUND // No glass bottle
+    )
+    
+    // 2. Your App Logo overlaid on top
+    Image(
+        painter = painterResource(id = R.drawable.app_logo),
+        contentDescription = "Logo",
+        modifier = Modifier.size(120.dp)
+    )
+}
+```
+
+### 2. Live Interactive Background
+Give your app a premium "Zen" feel by using it as a slow, soothing background behind your standard UI components (like login screens or meditation timers):
+
+```kotlin
+Box(modifier = Modifier.fillMaxSize()) {
+    // Very slow, relaxing background
+    LavaLamp(
+        modifier = Modifier.fillMaxSize(),
+        speed = 0.3f,
+        flowIntensity = 0.2f,
+        containerMode = LavaContainerMode.AMBIENT_BACKGROUND // Pure fluid background
+    )
+    
+    // Your UI goes here (Cards, Text, Buttons...)
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text("Welcome Back", color = Color.White)
+        // ...
+    }
+}
+```
+
+### 3. "Liquid Objects" & Gamification (Custom PNGs)
+Want to give fluid physics to specific objects (like floating hearts, coins, or custom icons)? Use the `LavaMode.Png` feature to make your custom images merge and interact like liquids!
+
+```kotlin
+val myCustomIcons = remember { listOf(icon1, icon2, icon3) } // Your ImageBitmaps
+
+LavaLamp(
+    blobCount = 10,
+    mode = LavaMode.Png(images = myCustomIcons)
+)
+```
+
+---
+
 ## 🧩 Comprehensive API Parameters
 
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | modifier | Modifier | Modifier | Layout modifier |
-| blobCount | Int | 6 | Number of blobs |
+| blobCount | Int | 10 | Number of blobs |
 | speed | Float | 1.0f | Animation speed |
 | flowIntensity | Float | 0.5f | Fluid flow strength |
 | interactive | Boolean | true | Touch interaction |
 | sensorReactive | Boolean | true | Motion sensor support |
 | noiseOverlay | Boolean | true | Film grain effect |
 | lampRotation | Float | 0f | Inverts Gravity |
+| containerMode | LavaContainerMode | GLASS_BOTTLE | `GLASS_BOTTLE` or `AMBIENT_BACKGROUND` |
 | mode | LavaMode | Vector(CYBERPUNK) | Rendering mode |
 | background | LavaBackground | StyleBackdrop | Background style |
 | physicsConfig | LavaPhysicsConfig | default | Physics tuning |
@@ -181,9 +243,10 @@ All layouts adapt dynamically using Compose size awareness.
 ### [v2.0.0] - 2026-05-19
 - **Physics Revamp**: Replaced Multi-Phase density separation with unified Volumetric SPH Cohesion Physics Engine (surface tension).
 - **Constant Buoyancy**: Fluid blobs now always float up based on uniform density.
+- **LavaContainerMode API**: Added `LavaContainerMode` to easily switch between a classic glass bottle and a full-screen ambient UI background.
 - **Gravity Inversion**: Added `lampRotation` API for inverting the fluid flow like an hourglass.
 - **Tuning Config**: Added `touchInfluence` and `shakeInfluence` to `LavaPhysicsConfig`.
-- **Sandbox UX**: Extended test Sandbox to support live slider tuning for new physics parameters.
+- **Showcase Companion App**: The repository now includes a full Interactive Companion App demonstrating Splash, Background, Custom PNGs, and a live Sandbox.
 
 ### [v1.7.1] - 2026-05-18
 - Initial stable release

@@ -105,6 +105,21 @@ sealed interface LavaBackground {
 }
 
 /**
+ * Defines whether the fluid is displayed inside a classic glass bottle (GLASS_BOTTLE)
+ * or floats freely across the full screen as a background layer (AMBIENT_BACKGROUND).
+ *
+ * Usage:
+ *   containerMode = LavaContainerMode.GLASS_BOTTLE      // Classic lava lamp (default)
+ *   containerMode = LavaContainerMode.AMBIENT_BACKGROUND // Free-flowing background fluid
+ */
+enum class LavaContainerMode {
+    /** Classic lava lamp with glass chamber, chrome caps, and base. (Default) */
+    GLASS_BOTTLE,
+    /** Blobs float freely across the full screen with no container. Use as UI background. */
+    AMBIENT_BACKGROUND
+}
+
+/**
  * Tuning parameters for the high-fidelity viscous fluid physics engine.
  */
 data class LavaPhysicsConfig(
@@ -118,13 +133,14 @@ data class LavaPhysicsConfig(
 @Composable
 fun LavaLamp(
     modifier: Modifier = Modifier,
-    blobCount: Int = 6,
+    blobCount: Int = 10,
     speed: Float = 1.0f,
     flowIntensity: Float = 0.5f,
     interactive: Boolean = true,
     sensorReactive: Boolean = true,
     noiseOverlay: Boolean = true,
     lampRotation: Float = 0f,
+    containerMode: LavaContainerMode = LavaContainerMode.GLASS_BOTTLE,
     mode: LavaMode = LavaMode.Vector(LavaLampStyle.CYBERPUNK),
     background: LavaBackground = LavaBackground.StyleBackdrop,
     physicsConfig: LavaPhysicsConfig = LavaPhysicsConfig()
@@ -527,8 +543,9 @@ fun LavaLamp(
 
                 // Initialize inside the bottle coordinates
                 if (blob.x == -1f) {
-                    blob.x = centerX + (Random.nextFloat() - 0.5f) * (lampWidth * 0.4f)
-                    blob.y = glassBottom - Random.nextFloat() * (lampHeight * 0.7f)
+                    // Fully random position across entire glass width and height
+                    blob.x = centerX + (Random.nextFloat() - 0.5f) * (lampWidth * 0.7f)
+                    blob.y = glassTop + Random.nextFloat() * lampHeight
                 }
 
                 // A. Vertical Buoyancy force (Density rule: Bubbles are lighter than the background liquid, so they always float UP)
@@ -714,6 +731,7 @@ fun LavaLamp(
             }
 
             // LAYER 1: Ambient Shadow Glow and Glass Backdrop Liquid
+            if (containerMode == LavaContainerMode.GLASS_BOTTLE) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 // Draw Ambient Backdrop Shadow Glow behind the whole lamp
                 drawRect(
@@ -750,6 +768,7 @@ fun LavaLamp(
                     }
                 }
             }
+            } // end showGlassBottle Layer 1
 
             // Helper function for graphicsLayer modifier to avoid repeating the RenderEffect code
             val metaballGraphicsLayer: androidx.compose.ui.graphics.GraphicsLayerScope.() -> Unit = {
@@ -779,57 +798,58 @@ fun LavaLamp(
                 }
             }
 
-            // LAYER 2: Isolated Fluid Metaball Liquid Blobs (Isolated graphicsLayer for absolute safety!)
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
                     .then(pointerModifier)
                     .graphicsLayer(block = metaballGraphicsLayer)
             ) {
-                // Force Compose snapshot system to observe 'time' state so this Canvas ALWAYS invalidates and redraws during animation ticks
                 val drawTime = time
 
-                clipPath(glassPath) {
-                    // A. Draw Tapered Glowing Bottom Reservoir (Hot wax pool in base)
-                    val bottomPoolRadius = lampWidth * 0.45f
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            0.0f to activeColors[0],
-                            0.45f to activeColors[0],
-                            0.75f to activeColors[0].copy(alpha = 0.6f),
-                            1.0f to Color.Transparent,
+                // Conditionally clip blobs to the glass path or draw freely as background
+                val doDrawBlobs: () -> Unit = {
+                    // A. Draw Tapered Glowing Bottom Reservoir (only inside bottle)
+                    if (containerMode == LavaContainerMode.GLASS_BOTTLE) {
+                        val bottomPoolRadius = lampWidth * 0.45f
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                0.0f to activeColors[0],
+                                0.45f to activeColors[0],
+                                0.75f to activeColors[0].copy(alpha = 0.6f),
+                                1.0f to Color.Transparent,
+                                center = Offset(centerX, glassBottom + 20f),
+                                radius = bottomPoolRadius
+                            ),
+                            radius = bottomPoolRadius,
                             center = Offset(centerX, glassBottom + 20f),
-                            radius = bottomPoolRadius
-                        ),
-                        radius = bottomPoolRadius,
-                        center = Offset(centerX, glassBottom + 20f),
-                        blendMode = BlendMode.SrcOver
-                    )
+                            blendMode = BlendMode.SrcOver
+                        )
+                    }
 
-                    // B. Draw Tapered Glowing Top Reservoir (Cooling wax pool in top cap)
-                    val topPoolRadius = lampWidth * 0.32f
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            0.0f to activeColors.last(),
-                            0.45f to activeColors.last(),
-                            0.75f to activeColors.last().copy(alpha = 0.6f),
-                            1.0f to Color.Transparent,
+                    // B. Draw Tapered Glowing Top Reservoir (only inside bottle)
+                    if (containerMode == LavaContainerMode.GLASS_BOTTLE) {
+                        val topPoolRadius = lampWidth * 0.32f
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                0.0f to activeColors.last(),
+                                0.45f to activeColors.last(),
+                                0.75f to activeColors.last().copy(alpha = 0.6f),
+                                1.0f to Color.Transparent,
+                                center = Offset(centerX, glassTop - 15f),
+                                radius = topPoolRadius
+                            ),
+                            radius = topPoolRadius,
                             center = Offset(centerX, glassTop - 15f),
-                            radius = topPoolRadius
-                        ),
-                        radius = topPoolRadius,
-                        center = Offset(centerX, glassTop - 15f),
-                        blendMode = BlendMode.SrcOver
-                    )
+                            blendMode = BlendMode.SrcOver
+                        )
+                    }
 
-                    // C. Draw Floating Dynamic Physics-Based Blobs inside the glass
+                    // C. Draw Floating Dynamic Physics-Based Blobs
                     blobs.forEach { blob ->
                         if (blob.x == -1f) return@forEach
 
-                        // 1. Calculate dynamic scale breathing radius
-                        var radius = blob.baseRadius * (1f + 0.12f * sin(time * blob.scaleSpeed + blob.scalePhase))
+                        var radius = blob.baseRadius * (1f + 0.12f * sin(drawTime * blob.scaleSpeed + blob.scalePhase))
 
-                        // 2. Dynamic Neck Thinning: If stretching, slim the radii down as distance grows to conserve volume and make the neck gooey!
                         if (blob.connectedBlobId != -1) {
                             val sibling = blobs.find { it.id == blob.connectedBlobId }
                             if (sibling != null) {
@@ -838,12 +858,10 @@ fun LavaLamp(
                                 val dist = hypot(dx, dy)
                                 val limit = blob.baseRadius * 2.3f
                                 val stretchRatio = (dist / limit).coerceIn(0f, 1f)
-                                // Slim down by up to 28% to physically thin the neck
                                 radius *= (1.0f - stretchRatio * 0.28f)
                             }
                         }
 
-                        // 3. Post-Pinch-Off Springy Recoil oscillation scale (surface tension snap wobble)
                         if (blob.snapRecoilTime != -1f) {
                             val t = blob.snapRecoilTime
                             val recoilScale = 1f - 0.24f * kotlin.math.cos(t * 16f) * kotlin.math.exp(-t * 4.5f)
@@ -851,7 +869,6 @@ fun LavaLamp(
                         }
 
                         if (blobImages != null && blobImages.isNotEmpty()) {
-                            // Scale and render custom PNG image asset
                             val bitmap = blobImages[blob.imageIndex % blobImages.size]
                             drawImage(
                                 image = bitmap,
@@ -859,7 +876,6 @@ fun LavaLamp(
                                 dstSize = IntSize((radius * 2).toInt(), (radius * 2).toInt())
                             )
                         } else {
-                            // Fallback to programmatic glowing gradient metaball vector circles
                             drawCircle(
                                 brush = Brush.radialGradient(
                                     0.0f to blob.color,
@@ -876,9 +892,16 @@ fun LavaLamp(
                         }
                     }
                 }
+
+                if (containerMode == LavaContainerMode.GLASS_BOTTLE) {
+                    clipPath(glassPath) { doDrawBlobs() }
+                } else {
+                    doDrawBlobs()
+                }
             }
 
-            // LAYER 3: Sharp Gloss reflections, metallic base and cap
+            // LAYER 3: Sharp Gloss reflections, metallic base and cap (only when bottle is shown)
+            if (containerMode == LavaContainerMode.GLASS_BOTTLE) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 // A. Draw Curved Glass Reflex Highlights (drawn on top of blurred blobs!)
                 clipPath(glassPath) {
@@ -977,6 +1000,7 @@ fun LavaLamp(
                     )
                 }
             }
+            } // end showGlassBottle Layer 3
         }
     }
 }
