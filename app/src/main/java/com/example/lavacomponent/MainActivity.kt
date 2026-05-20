@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.draw.blur
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -70,7 +71,7 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
 
         // Full screen background fluid — no bottle
         LavaLamp(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().blur(32.dp),
             blobCount = 5,
             speed = 0.35f,
             flowIntensity = 0.15f,
@@ -147,6 +148,48 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
                 }
             }
 
+            // Mini Showcase: Reverse Gravity
+            item {
+                MiniShowcaseCard(title = "Reverse Gravity (Wax Rain)", desc = "Gravity pulls blobs downward") {
+                    LavaLamp(
+                        modifier = Modifier.fillMaxSize(),
+                        blobCount = 8,
+                        speed = 0.8f,
+                        gravityMode = LavaGravity.DOWN,
+                        mode = LavaMode.Vector(LavaLampStyle.VOLCANIC),
+                        containerMode = LavaContainerMode.AMBIENT_BACKGROUND
+                    )
+                }
+            }
+
+            // Mini Showcase: Zero Gravity
+            item {
+                MiniShowcaseCard(title = "Zero Gravity Space", desc = "Blobs drift peacefully in place") {
+                    LavaLamp(
+                        modifier = Modifier.fillMaxSize(),
+                        blobCount = 5,
+                        speed = 0.2f,
+                        gravityMode = LavaGravity.ZERO_GRAVITY,
+                        mode = LavaMode.Vector(LavaLampStyle.AURORA_FOREST),
+                        containerMode = LavaContainerMode.AMBIENT_BACKGROUND
+                    )
+                }
+            }
+
+            // Mini Showcase: Flat 2D Style
+            item {
+                MiniShowcaseCard(title = "Flat Minimalist Bottle", desc = "Vector style without 3D glass reflections") {
+                    LavaLamp(
+                        modifier = Modifier.fillMaxSize(),
+                        blobCount = 6,
+                        speed = 0.6f,
+                        glassStyle = LavaGlassStyle.FLAT_2D,
+                        containerMode = LavaContainerMode.GLASS_BOTTLE,
+                        mode = LavaMode.Vector(LavaLampStyle.CYBERPUNK)
+                    )
+                }
+            }
+
             item {
                 Text("INTERACTIVE DEMOS", color = Color.White.copy(0.6f), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth().padding(top = 16.dp), textAlign = TextAlign.Start)
             }
@@ -186,9 +229,10 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
 @Composable
 fun MiniShowcaseCard(title: String, desc: String, content: @Composable () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().height(160.dp),
+        modifier = Modifier.fillMaxWidth().height(180.dp),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF161622))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF161622)),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             content()
@@ -263,6 +307,7 @@ fun SplashDemoScreen(onBack: () -> Unit) {
             LavaLamp(
                 modifier = Modifier.fillMaxSize(),
                 blobCount = 3,        // Few large blobs so image is clearly visible
+                blobScale = 2.0f,
                 speed = 0.7f,
                 flowIntensity = 0.5f,
                 containerMode = LavaContainerMode.AMBIENT_BACKGROUND,
@@ -417,6 +462,7 @@ fun CustomObjectsScreen(onBack: () -> Unit) {
             LavaLamp(
                 modifier = Modifier.fillMaxSize(),
                 blobCount = 6,
+                blobScale = 1.8f,
                 speed = 0.9f,
                 flowIntensity = 0.55f,
                 containerMode = LavaContainerMode.AMBIENT_BACKGROUND,
