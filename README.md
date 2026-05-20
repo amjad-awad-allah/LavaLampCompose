@@ -1,11 +1,11 @@
 # 🌋 LavaLamp for Jetpack Compose
 
 [![Build Status](https://img.shields.io/badge/Android-100%25%20Build%20Successful-brightgreen.svg?style=for-the-badge&logo=android)](https://developer.android.com)
-[![Platform](https://img.shields.io/badge/Compose-v2026.05.00-purple.svg?style=for-the-badge&logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
-[![Release Version](https://img.shields.io/badge/Release-v2.0.0-blue.svg?style=for-the-badge&logo=github)](https://github.com/amjad-awad-allah/LavaLampCompose)
+[![Platform](https://img.shields.io/badge/Compose-v2026.05.00-purple.svg?style=for-the-badge&logo=jetpackcompose)](https://developer.android.com)
+[![Release Version](https://img.shields.io/badge/Release-v2.5.0-blue.svg?style=for-the-badge&logo=github)](https://github.com/amjad-awad-allah/LavaLampCompose)
 [![License](https://img.shields.io/badge/License-MIT-orange.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
-**LavaLamp** is a premium, high-fidelity, viscous fluid physics simulation library designed exclusively for **Jetpack Compose**. It brings beautiful organic fluid metaballs, glass tapered chambers, and tactile physics displacement to Android with state-of-the-art GPU optimizations.
+**LavaLamp** is a premium, state-of-the-art viscous fluid physics simulation library designed exclusively for **Jetpack Compose**. It brings beautiful organic fluid metaballs, 3D AGSL refraction shaders, physical obstacle deflection, liquid image warp with spring-based restoration, an audio-reactive visualizer engine, floating micro-particles, and tactile physical feedback to Android with high-performance GPU processing.
 
 ---
 
@@ -18,13 +18,13 @@
 </p>
 
 > 💡 **Companion Showcase App Included!**
-> This repository contains a full **Showcase Application** (`app` module) designed specifically to explain and demonstrate the library's capabilities. Clone the repo and run the app to explore interactive examples of Splash Screens, Background Modes, Custom PNG Objects, and a live Physics Sandbox!
+> This repository contains a full **Showcase Application** (`app` module) designed specifically to demonstrate the library's capabilities. Clone the repository and run the app to explore interactive examples of Splash Screens, Background Modes, Custom PNG Objects, draggable UI Obstacles, and the spectacular **Liquid Image Warp Sandbox** and **Audio-Reactive Visualizer**!
 
 ---
 
 ## 📦 Installation & Versioning
 
-You can integrate this library directly into any Android application using **JitPack** and the GitHub release tag **`2.0.0`**.
+You can integrate this library directly into any Android application using **JitPack** and the GitHub release tag **`2.5.0`**.
 
 ### 1. Register JitPack Repository
 Add the JitPack maven repository to your root project's `settings.gradle.kts` file:
@@ -45,7 +45,7 @@ Add the dependency to your app's `build.gradle.kts` file:
 
 ```kotlin
 dependencies {
-    implementation("com.github.amjad-awad-allah:LavaLampCompose:2.0.0")
+    implementation("com.github.amjad-awad-allah:LavaLampCompose:2.5.0")
 }
 ```
 
@@ -53,15 +53,18 @@ dependencies {
 
 ## ✨ Features
 
-- 🧠 **Advanced Viscous Physics**: Dynamic convection, horizontal drifts, accelerometer-reactive tilt sliding, phone shake emulsification/splitting, and tactile pop explosions.
+- 🧠 **Advanced Viscous Physics**: Dynamic convection, horizontal drifts, accelerometer-reactive tilt sliding, phone shake emulsification/splitting, and spring-tension neck pinch-off.
+- ⚡ **3D AGSL Refraction Shaders**: GPU-accelerated Blinn-Phong lighting, real-time normal estimation from blurred alpha masks, specular highlights, and edge glows (Android 13+). Includes automatic high-performance color matrix fallback for older devices or emulators.
+- 🚧 **UI Obstacle Deflection**: Collision deflection around custom bounding boxes. Fluid metaballs dynamically slide, deform, and deflect around active interactive UI cards or buttons.
+- 🎨 **Liquid Image Warp & Organic Restoration**: Slice any high-resolution image into a dynamic fluid grid. Swipe to distort, tilt to slosh, and watch it seamlessly morph back to its original single continuous layout via responsive spring-mass physics. Bypasses metaball filters in image mode to preserve crisp, high-fidelity texture details.
+- 🎙️ **Audio-Reactive Mode**: Real-time microphone audio processing with FFT spectral analysis. Dynamically splits sound into separate frequency bands (Bass, Mids, Highs) to morph, scale, and glow liquid metaballs to the beat of speech or music.
+- ✨ **Ambient Micro-Particles Layer**: Floating glowing neon dust particles that float elegantly through the viscous fluid chamber. They react organically to gravity, convection flow, and touch drag with realistic fluid viscosity physics.
 - 🔮 **Elastic Volumetric Repulsion**: Realistic fluid displacement engine where blobs softly push each other aside instead of passing through like ghosts.
-- ⚡ **4x GPU Optimization**: Renders continuous real-time Skia Gaussian blurs at a buttery-smooth **60 FPS** on both high-end and budget/low-end devices.
-- 🎨 **Ultimate Customizability**: Supports vector gradients, style presets, custom colors, layered backgrounds, and custom PNG images/emojis as wax textures.
 - 🧯 **Enterprise-Grade Edge Cases**:
-  - Lifecycle Awareness: Auto-throttles physics updates when the app goes into the background.
-  - Hardware Battery Protection: Auto-unregisters accelerometer sensor listeners when paused.
-  - Memory Leak Protection: Explicit native recycling of generated bitmaps.
-  - Responsive Layouts: Dynamically fits rotated screens and layout dimensions.
+  - **Lifecycle Awareness**: Auto-throttles physics updates when the app goes into the background or gets paused.
+  - **Battery Protection**: Auto-unregisters accelerometer sensor listeners and stops audio record listeners when paused.
+  - **Memory Safety**: Explicit native recycling of generated noise overlays, bitmap shaders, and audio buffer allocations.
+  - **DX Validation**: Fully documented KDoc parameters and robust require-validations prevent layout design issues during development.
 
 ---
 
@@ -71,14 +74,18 @@ dependencies {
 graph TD
     A[LavaLamp Composable] --> B[Layer 0: Starfield Background]
     A --> C[Layer 1: Glass Bottle Inner Glow Backdrop]
-    A --> D[Layer 2: Liquid Wax Metaballs Skia Blur + Contrast Threshold]
-    A --> E[Layer 3: Cap, Base, Glass Gloss reflections, Matte Noise]
+    A --> D[Layer 2: Liquid Wax / Sliced Image Metaballs Skia Blur + Contrast Threshold]
+    A --> E[Layer 3: Ambient Micro-Particles Neon Dust]
+    A --> F[Layer 4: Cap, Base, Glass Gloss reflections, Matte Noise]
     
-    subgraph Physics Engine
-        D --> F[Convection Buoyancy]
-        D --> G[Accelerometer Tilt Sliding]
-        D --> H[Soft Repulsion Collision]
-        D --> I[Direct Touch Magnet & Explode-Splitting]
+    subgraph Physics & Analysis Engine
+        D --> G[Convection Buoyancy & Springs]
+        D --> H[Accelerometer Tilt Sliding]
+        D --> I[Soft Repulsion Collision]
+        D --> J[Direct Touch Magnet & Explode-Splitting]
+        D --> K[UI Obstacles Collision Deflection]
+        D --> L[Spring-mass Restoration Force]
+        D --> M[FFT Audio Spectrum Frequency Scaling]
     end
 ```
 
@@ -86,36 +93,18 @@ graph TD
 
 ## 🚀 Quick Start & API Usage
 
-Here is how easily you can display a premium Lava Lamp in your Compose layout:
+Display a premium interactive Lava Lamp in your Compose layout in just a single line of code:
 
 ```kotlin
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.example.lavalamp.LavaLamp
-import com.example.lavalamp.LavaMode
-import com.example.lavalamp.LavaLampStyle
-import com.example.lavalamp.LavaBackground
-import com.example.lavalamp.LavaPhysicsConfig
 
 @Composable
 fun PremiumLavaScreen() {
-    LavaLamp(
-        modifier = Modifier.fillMaxSize(),
-        blobCount = 6,
-        speed = 1.0f,
-        flowIntensity = 0.5f,
-        mode = LavaMode.Vector(LavaLampStyle.CYBERPUNK),
-        background = LavaBackground.StyleBackdrop,
-        lampRotation = 0f,
-        physicsConfig = LavaPhysicsConfig(
-            damping = 0.95f,
-            softRepulsion = 120f,
-            smoothingWeight = 0.05f,
-            touchInfluence = 1.0f,
-            shakeInfluence = 1.0f
-        )
-    )
+    // Beautiful default cyberpunk theme with full touch and accelerometer controls
+    LavaLamp(modifier = Modifier.fillMaxSize())
 }
 ```
 
@@ -124,18 +113,15 @@ fun PremiumLavaScreen() {
 ## 💡 Popular Use Cases
 
 ### 1. Immersive Splash Screen / Loading Screen
-You can use `LavaLamp` as a captivating full-screen animation while loading data. Place your logo on top using a `Box`:
+Use `LavaLamp` as a captivating full-screen animation while loading data. Place your logo on top using a `Box`:
 
 ```kotlin
 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-    // 1. The Liquid Physics Background
     LavaLamp(
         modifier = Modifier.fillMaxSize(),
         flowIntensity = 0.8f,
         containerMode = LavaContainerMode.AMBIENT_BACKGROUND // No glass bottle
     )
-    
-    // 2. Your App Logo overlaid on top
     Image(
         painter = painterResource(id = R.drawable.app_logo),
         contentDescription = "Logo",
@@ -145,19 +131,16 @@ Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
 ```
 
 ### 2. Live Interactive Background
-Give your app a premium "Zen" feel by using it as a slow, soothing background behind your standard UI components (like login screens or meditation timers):
+Give your app a premium "Zen" feel by using it as a slow, soothing background behind login screens or meditation timers:
 
 ```kotlin
 Box(modifier = Modifier.fillMaxSize()) {
-    // Very slow, relaxing background
     LavaLamp(
         modifier = Modifier.fillMaxSize(),
         speed = 0.3f,
         flowIntensity = 0.2f,
         containerMode = LavaContainerMode.AMBIENT_BACKGROUND // Pure fluid background
     )
-    
-    // Your UI goes here (Cards, Text, Buttons...)
     Column(modifier = Modifier.padding(16.dp)) {
         Text("Welcome Back", color = Color.White)
         // ...
@@ -165,16 +148,66 @@ Box(modifier = Modifier.fillMaxSize()) {
 }
 ```
 
-### 3. "Liquid Objects" & Gamification (Custom PNGs)
-Want to give fluid physics to specific objects (like floating hearts, coins, or custom icons)? Use the `LavaMode.Png` feature to make your custom images merge and interact like liquids!
+### 3. Real-Time Audio Visualizer & Particles
+Run real-time audio separation (Bass, Mids, Highs) to drive physics scaling and overlay ambient glowing neon dust:
 
 ```kotlin
-val myCustomIcons = remember { listOf(icon1, icon2, icon3) } // Your ImageBitmaps
+@Composable
+fun SoundReactiveVisualizer(
+    bass: Float, // 0.0f to 1.0f from FFT
+    mids: Float,
+    highs: Float
+) {
+    LavaLamp(
+        modifier = Modifier.fillMaxSize(),
+        blobCount = 8,
+        blobScale = 1.1f + bass * 0.35f, // Grow blobs physically on bass hits
+        enableParticles = true,
+        particleCount = 60,
+        audioInfluence = 1.0f,
+        audioFrequencyBands = listOf(bass, mids, highs),
+        containerMode = LavaContainerMode.GLASS_BOTTLE
+    )
+}
+```
 
-LavaLamp(
-    blobCount = 10,
-    mode = LavaMode.Png(images = myCustomIcons)
-)
+### 4. Draggable UI Obstacles
+Reroute fluid around interactive controls on the fly by supplying layout bounds:
+
+```kotlin
+var buttonBounds by remember { mutableStateOf<Rect?>(null) }
+
+Box(modifier = Modifier.fillMaxSize()) {
+    LavaLamp(
+        modifier = Modifier.fillMaxSize(),
+        obstacles = listOfNotNull(buttonBounds)
+    )
+    Button(
+        onClick = { /* ... */ },
+        modifier = Modifier
+            .align(Alignment.Center)
+            .onGloballyPositioned { buttonBounds = it.boundsInParent() }
+    ) {
+        Text("Bounce Wax!")
+    }
+}
+```
+
+### 5. Interactive Liquid Image Warp
+Melt any static image into liquid bubbles on touch, and watch it organically restore back to its original layout:
+
+```kotlin
+@Composable
+fun InteractiveImageWarp(imageBitmap: ImageBitmap) {
+    LavaLamp(
+        modifier = Modifier.fillMaxSize(),
+        blobCount = 36, // Dynamic 6x6 grid of image slices
+        containerMode = LavaContainerMode.AMBIENT_BACKGROUND,
+        fluidImage = imageBitmap,
+        imageRestorationStrength = 0.04f, // Spring snap-back speed
+        enableTiltDeformation = true // Gyroscope tilt sloshes the picture
+    )
+}
 ```
 
 ---
@@ -183,54 +216,58 @@ LavaLamp(
 
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| modifier | Modifier | Modifier | Layout modifier |
-| blobCount | Int | 10 | Number of blobs |
-| speed | Float | 1.0f | Animation speed |
-| flowIntensity | Float | 0.5f | Fluid flow strength |
-| interactive | Boolean | true | Touch interaction |
-| sensorReactive | Boolean | true | Motion sensor support |
-| noiseOverlay | Boolean | true | Film grain effect |
-| lampRotation | Float | 0f | Inverts Gravity |
-| containerMode | LavaContainerMode | GLASS_BOTTLE | `GLASS_BOTTLE` or `AMBIENT_BACKGROUND` |
-| mode | LavaMode | Vector(CYBERPUNK) | Rendering mode |
-| background | LavaBackground | StyleBackdrop | Background style |
-| physicsConfig | LavaPhysicsConfig | default | Physics tuning |
+| `modifier` | `Modifier` | `Modifier` | Standard layout modifier. |
+| `blobCount` | `Int` | `10` | Total number of dynamic liquid metaballs to simulate. Must be $> 0$. |
+| `blobScale` | `Float` | `1.0f` | Global scale multiplier for metaballs. Must be $> 0f$. |
+| `speed` | `Float` | `1.0f` | Physics simulation speed. Cannot be negative. |
+| `flowIntensity` | `Float` | `0.5f` | Fluid buoyancy and convection drift strength. |
+| `interactive` | `Boolean` | `true` | When true, touch gestures pull, stretch, and fling fluid. |
+| `sensorReactive` | `Boolean` | `true` | Respond to accelerometer tilt sloshing. |
+| `noiseOverlay` | `Boolean` | `true` | Premium micro-grain analog matte texture. |
+| `lampRotation` | `Float` | `0f` | Rotational tilt offset in degrees for gravity inversion. |
+| `gravityMode` | `LavaGravity` | `UP` | Gravity direction: `UP`, `DOWN`, or `ZERO_GRAVITY`. |
+| `containerMode` | `LavaContainerMode` | `GLASS_BOTTLE` | `GLASS_BOTTLE` or `AMBIENT_BACKGROUND`. |
+| `glassStyle` | `LavaGlassStyle` | `REALISTIC_3D` | Chrome and gloss reflections style: `REALISTIC_3D` or `FLAT_2D`. |
+| `viscosity` | `LavaViscosity` | `STANDARD` | Fusion thickness: `WATER`, `STANDARD`, or `THICK_HONEY`. |
+| `pulseSpeed` | `Float` | `0f` | Breathing oscillation rate in Hz (0f to disable). |
+| `mode` | `LavaMode` | `Vector(CYBERPUNK)` | Vector gradients or custom PNG images as textures. |
+| `background` | `LavaBackground` | `StyleBackdrop` | Background color, gradient, or custom overlay textures. |
+| `physicsConfig` | `LavaPhysicsConfig` | `default` | Tuning damping, soft repulsion, and touch influence. |
+| `shaderConfig` | `LavaShaderConfig` | `default` | Custom 3D refraction, specular highlights, and light vectors. |
+| `obstacles` | `List<Rect>` | `emptyList()` | Active Rect bounds that metaballs physically deflect around. |
+| `fluidImage` | `ImageBitmap?` | `null` | Target image to liquefy, slice, and warp like fluid. |
+| `imageRestorationStrength` | `Float` | `0.05f` | Spring coefficient pulling image slices back to original layout. |
+| `enableTiltDeformation` | `Boolean` | `true` | Gyroscope tilt sloshing inside fluid image mode. |
+| `audioInfluence` | `Float` | `0f` | Fluid buoyancy scaling multiplier based on audio amplitudes. |
+| `audioFrequencyBands` | `List<Float>` | `emptyList()` | Live sound frequency bands (e.g. Bass, Mids, Highs) to scale specific blobs. |
+| `enableParticles` | `Boolean` | `false` | Enable or disable the floating micro-particles system. |
+| `particleCount` | `Int` | `80` | Total density count of glowing neon particles to render. |
 
 ---
 
-## 🎨 Custom PNG Images Mode
+## 🧯 Safety & Production Readiness
 
-```kotlin
-val emojiBitmaps = remember {
-    listOf(
-        createEmojiBitmap("💜", 160),
-        createEmojiBitmap("👾", 160),
-        createEmojiBitmap("🦄", 160)
-    )
-}
+### 🔋 Battery Protection
+Physics simulation calculations pause instantly and gyroscope sensor listeners unregister automatically when the app goes into the background, maintaining zero background battery drain.
 
-LavaLamp(
-    blobCount = 8,
-    mode = LavaMode.Png(images = emojiBitmaps)
-)
+### 🎙️ Audio Permission Reliability
+The library manifest automatically declares:
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
 ```
-
----
-
-## 🧯 Edge Cases & Production Readiness
-
-### 🔋 Background Safety
-Physics pauses automatically and sensors are unregistered.
+This guarantees proper merging at build time. When using the microphone to capture real-time audio, request the runtime permission safely using your standard activity result launchers. If a permission is denied, the library falls back gracefully to standard convection physics without crashing.
 
 ### 🧠 Memory Safety
-Bitmaps are recycled on dispose to prevent leaks.
+Cinematic grain textures and dynamically scaled bitmap shader buffers are explicitly recycled on disposal to prevent native garbage collector overhead and memory leaks.
 
-### 🔄 Rotation Handling
-All layouts adapt dynamically using Compose size awareness.
+### 🔄 Rotation & Scaling
+All layout boundaries, bottle tapers, and collision bounds recalculate dynamically using Compose size-awareness, making it safe for tablets, foldables, and landscape rotation.
 
 ---
 
 ## 📜 Proguard Rules
+
+If you are using R8/Proguard, add the following line to keep Skia/Compose drawing parameters:
 
 ```proguard
 -keepclassmembers class androidx.compose.ui.graphics.** { *; }
@@ -238,31 +275,39 @@ All layouts adapt dynamically using Compose size awareness.
 
 ---
 
-## 📅 Changelog
+## 🗺️ Roadmap
 
-### [v2.0.0] - 2026-05-19
-- **Physics Revamp**: Replaced Multi-Phase density separation with unified Volumetric SPH Cohesion Physics Engine (surface tension).
-- **Constant Buoyancy**: Fluid blobs now always float up based on uniform density.
-- **LavaContainerMode API**: Added `LavaContainerMode` to easily switch between a classic glass bottle and a full-screen ambient UI background.
-- **Gravity Inversion**: Added `lampRotation` API for inverting the fluid flow like an hourglass.
-- **Tuning Config**: Added `touchInfluence` and `shakeInfluence` to `LavaPhysicsConfig`.
-- **Showcase Companion App**: The repository now includes a full Interactive Companion App demonstrating Splash, Background, Custom PNGs, and a live Sandbox.
-
-### [v1.7.1] - 2026-05-18
-- Initial stable release
-- Fluid physics engine
-- GPU blur optimization
-- Sensor integration
-- Memory safety layer
+- [x] **Milestone 1: 3D Refraction Shaders (AGSL)** - High-performance normal maps and specular lighting.
+- [x] **Milestone 2: Liquid Image Warp** - Slice and warp bitmaps with spring-based restoration.
+- [x] **Milestone 3: Audio-Reactive Mode** - Real-time microphone-driven physics and visuals.
+- [x] **Milestone 4: Micro-Particles System** - Viscous neon dust particles layered elegantly.
+- [ ] **Milestone 5: Compose Multiplatform (KMP) Port** - Bring this viscous liquid physics library to iOS, Desktop, and Web.
 
 ---
 
-## 📬 Contact
+## 📅 Changelog
 
-- LinkedIn: https://www.linkedin.com/in/amjad-awad-allah
-- Email: amjad.awadallah93@gmail.com
-- Website: https://amjadawadallah.com/
-- GitHub: https://github.com/amjad-awad-allah
+### [v2.5.0] - 2026-05-20
+- **Audio-Reactive Mode**: Real-time microphone-driven viscous physics. Metamorphoses bubble scale, speed, and white glow shift dynamically to audio amplitudes.
+- **Ambient Micro-Particles**: Integrated glowing neon dust layer that reacts to fluid currents, gravity, and touch with viscous drag forces.
+- **Liquid Image Warp Polish**: Solved scrambling and overlapping issues. Textures now stitch seamlessly into a single continuous layout at rest and restore smoothly via mass-spring physical calculations.
+- **Microphone Permission MERGE**: Added standard `RECORD_AUDIO` declaration in both the library and companion manifests for seamless runtime request integrations.
+- **Developer DX & Safety**: Exhaustive KDoc parameters with hover support and require validation checks.
+
+### [v2.0.0] - 2026-05-19
+- **SPH Physics**: Replaced Multi-Phase density separation with unified Volumetric SPH Cohesion Physics Engine.
+- **LavaContainerMode API**: Added support for full-screen Ambient backgrounds without the bottle container.
+- **Gravity Inversion**: Added `lampRotation` API for inverting the fluid flow.
+- **Showcase Companion App**: Full interactive project containing 5 unique interactive showcases.
+
+---
+
+## 📬 Developer Contact
+
+- **LinkedIn**: [amjad-awad-allah](https://www.linkedin.com/in/amjad-awad-allah)
+- **Email**: amjad.awadallah93@gmail.com
+- **Website**: [amjadawadallah.com](https://amjadawadallah.com/)
+- **GitHub**: [github.com/amjad-awad-allah](https://github.com/amjad-awad-allah)
 
 ---
 
