@@ -111,16 +111,40 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
 
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
-            contentPadding = PaddingValues(top = 72.dp, bottom = 52.dp),
+            contentPadding = PaddingValues(top = 48.dp, bottom = 52.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {
-                Spacer(Modifier.height(8.dp))
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = "LavaLamp",
+                        fontSize = 42.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White,
+                        style = androidx.compose.ui.text.TextStyle(
+                            shadow = androidx.compose.ui.graphics.Shadow(
+                                color = Color(0xFF00FFCC).copy(0.6f),
+                                blurRadius = 40f
+                            )
+                        )
+                    )
+                    Text(
+                        text = "Jetpack Compose Fluid Physics",
+                        fontSize = 13.sp,
+                        color = Color.White.copy(0.75f),
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
 
             item {
-                Text("LIVE EXAMPLES", color = Color.White.copy(0.6f), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth().padding(top = 16.dp), textAlign = TextAlign.Start)
+                Text("LIVE EXAMPLES", color = Color.White.copy(0.6f), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), textAlign = TextAlign.Start)
             }
 
             // Mini Showcase: Thick Honey

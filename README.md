@@ -9,16 +9,37 @@
 
 ---
 
-## 🎬 Demo Preview & Companion App
+## 🎬 Feature Showcase & Demos
 
+Welcome to the **LavaLamp Companion App**! The source code includes a fully-featured showcase application (the `app` module) that demonstrates the library's power.
+
+> *Note: Create a folder named `media` in your repository root and upload your screen recordings there. Replace the placeholders below.*
+
+<br>
+
+### 📱 Main Interactive Showcase
+A fully tunable physics sandbox to play with viscosity, blobs, flow intensity, and 3D AGSL refraction shaders.
 <p align="center">
-  <img src="media/1.gif" width="250"/>
-  <img src="media/2.gif" width="250"/>
-  <img src="media/3.gif" width="250"/>
+  <img src="media/main_demo.gif" width="280" alt="Main Interactive Sandbox"/>
 </p>
 
-> 💡 **Companion Showcase App Included!**
-> This repository contains a full **Showcase Application** (`app` module) designed specifically to demonstrate the library's capabilities. Clone the repository and run the app to explore interactive examples of Splash Screens, Background Modes, Custom PNG Objects, draggable UI Obstacles, and the spectacular **Liquid Image Warp Sandbox** and **Audio-Reactive Visualizer**!
+### 💧 Liquid Image Warp
+Slice any image into a viscous fluid! Smear and distort it with touch, and watch the organic spring physics restore it.
+<p align="center">
+  <img src="media/fluid_image.gif" width="280" alt="Liquid Image Warp"/>
+</p>
+
+### 🎙️ Audio-Reactive Engine
+Transform your microphone input into a living audio visualizer. The metaballs violently scale and glow to the beat while micro-particles drift based on frequency.
+<p align="center">
+  <img src="media/audio_reactive.gif" width="280" alt="Audio Reactive Engine"/>
+</p>
+
+### 🌌 Ambient Modes (Zero & Reverse Gravity)
+Invert gravity to simulate Wax Rain, or disable it entirely for a calm Zero-Gravity space drift effect.
+<p align="center">
+  <img src="media/gravity_modes.gif" width="280" alt="Gravity Modes"/>
+</p>
 
 ---
 
