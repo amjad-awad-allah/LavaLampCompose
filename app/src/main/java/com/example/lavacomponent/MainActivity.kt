@@ -52,6 +52,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.res.vectorResource
 import androidx.core.content.ContextCompat
 
 enum class Screen { HOME, SPLASH, LOGIN, CUSTOM_OBJECTS, SANDBOX, OBSTACLE_DEMO, FLUID_IMAGE_DEMO, AUDIO_REACTIVE }
@@ -121,6 +126,14 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Spacer(Modifier.height(16.dp))
+                    Image(
+                        painter = painterResource(id = R.drawable.logo),
+                        contentDescription = "LavaLamp Logo",
+                        modifier = Modifier
+                            .size(110.dp)
+                            .padding(bottom = 16.dp)
+                            .shadow(32.dp, CircleShape, spotColor = Color(0xFF00FFCC))
+                    )
                     Text(
                         text = "LavaLamp",
                         fontSize = 42.sp,
