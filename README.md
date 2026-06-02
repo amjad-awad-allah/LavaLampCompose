@@ -13,11 +13,20 @@
 
 Welcome to the **LavaLamp Companion App**! The source code includes a fully-featured showcase application (the `app` module) that demonstrates the library's power.
 
-> *Note: Create a folder named `media` in your repository root and upload your screen recordings there. Replace the placeholders below.*
-
 <br>
 
-### 📱 Main Interactive Showcase
+### 🕹️ Interactive Demos (From Companion App)
+Explore the interactive capabilities of the library through these full-screen showcases:
+
+<table align="center">
+  <tr>
+    <td align="center"><b>Physics Sandbox</b><br><img src="media/interactive/physsics%20scand%20box.gif" width="240" alt="Physics Sandbox"/></td>
+    <td align="center"><b>Splash Screen</b><br><img src="media/interactive/splash%20screen.gif" width="240" alt="Splash Screen"/></td>
+    <td align="center"><b>Background Mode</b><br><img src="media/interactive/background%20mode.gif" width="240" alt="Background Mode"/></td>
+  </tr>
+</table>
+
+### ✨ Live Physics Examples
 A fully tunable physics sandbox to play with viscosity, blobs, flow intensity, and 3D AGSL refraction shaders.
 <p align="center">
   <img src="media/water.gif" width="280" alt="Water Viscosity"/>
@@ -138,9 +147,6 @@ fun PremiumLavaScreen() {
 ## 💡 Popular Use Cases
 
 ### 1. Immersive Splash Screen / Loading Screen
-<p align="center">
-  <img src="media/interactive/splash%20screen.gif" width="280" alt="Immersive Splash Screen"/>
-</p>
 Use `LavaLamp` as a captivating full-screen animation while loading data. Place your logo on top using a `Box`:
 
 ```kotlin
@@ -159,9 +165,6 @@ Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
 ```
 
 ### 2. Live Interactive Background
-<p align="center">
-  <img src="media/interactive/background%20mode.gif" width="280" alt="Live Interactive Background"/>
-</p>
 Give your app a premium "Zen" feel by using it as a slow, soothing background behind login screens or meditation timers:
 
 ```kotlin
@@ -240,12 +243,6 @@ fun InteractiveImageWarp(imageBitmap: ImageBitmap) {
     )
 }
 ```
-
-### 6. Interactive Physics Sandbox
-<p align="center">
-  <img src="media/interactive/physsics%20scand%20box.gif" width="280" alt="Interactive Physics Sandbox"/>
-</p>
-Provide a fully tunable interactive sandbox environment where users can play with viscosity, density, flow rates, and 3D AGSL refraction parameters in real-time.
 
 ---
 
