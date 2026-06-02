@@ -20,7 +20,10 @@ Welcome to the **LavaLamp Companion App**! The source code includes a fully-feat
 ### 📱 Main Interactive Showcase
 A fully tunable physics sandbox to play with viscosity, blobs, flow intensity, and 3D AGSL refraction shaders.
 <p align="center">
-  <img src="media/main_demo.gif" width="280" alt="Main Interactive Sandbox"/>
+  <img src="media/water.gif" width="280" alt="Water Viscosity"/>
+  <img src="media/hony.gif" width="280" alt="Honey Viscosity"/>
+  <br>
+  <img src="media/plus.gif" width="280" alt="Pulse Effect"/>
 </p>
 
 ### 💧 Liquid Image Warp
@@ -38,7 +41,8 @@ Transform your microphone input into a living audio visualizer. The metaballs vi
 ### 🌌 Ambient Modes (Zero & Reverse Gravity)
 Invert gravity to simulate Wax Rain, or disable it entirely for a calm Zero-Gravity space drift effect.
 <p align="center">
-  <img src="media/gravity_modes.gif" width="280" alt="Gravity Modes"/>
+  <img src="media/revers%20gravity.gif" width="280" alt="Reverse Gravity"/>
+  <img src="media/zero%20gravity.gif" width="280" alt="Zero Gravity"/>
 </p>
 
 ---
@@ -134,6 +138,9 @@ fun PremiumLavaScreen() {
 ## 💡 Popular Use Cases
 
 ### 1. Immersive Splash Screen / Loading Screen
+<p align="center">
+  <img src="media/interactive/splash%20screen.gif" width="280" alt="Immersive Splash Screen"/>
+</p>
 Use `LavaLamp` as a captivating full-screen animation while loading data. Place your logo on top using a `Box`:
 
 ```kotlin
@@ -152,6 +159,9 @@ Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
 ```
 
 ### 2. Live Interactive Background
+<p align="center">
+  <img src="media/interactive/background%20mode.gif" width="280" alt="Live Interactive Background"/>
+</p>
 Give your app a premium "Zen" feel by using it as a slow, soothing background behind login screens or meditation timers:
 
 ```kotlin
@@ -230,6 +240,12 @@ fun InteractiveImageWarp(imageBitmap: ImageBitmap) {
     )
 }
 ```
+
+### 6. Interactive Physics Sandbox
+<p align="center">
+  <img src="media/interactive/physsics%20scand%20box.gif" width="280" alt="Interactive Physics Sandbox"/>
+</p>
+Provide a fully tunable interactive sandbox environment where users can play with viscosity, density, flow rates, and 3D AGSL refraction parameters in real-time.
 
 ---
 
