@@ -29,10 +29,10 @@ Explore the interactive capabilities of the library through these full-screen sh
 ### ✨ Live Physics Examples
 A fully tunable physics sandbox to play with viscosity, blobs, flow intensity, and 3D AGSL refraction shaders.
 <p align="center">
-  <img src="media/water.gif" width="280" alt="Water Viscosity"/>
-  <img src="media/hony.gif" width="280" alt="Honey Viscosity"/>
+  <img src="media/water.gif" width="400" alt="Water Viscosity"/>
+  <img src="media/hony.gif" width="400" alt="Honey Viscosity"/>
   <br>
-  <img src="media/plus.gif" width="280" alt="Pulse Effect"/>
+  <img src="media/plus.gif" width="400" alt="Pulse Effect"/>
 </p>
 
 ### 💧 Liquid Image Warp
