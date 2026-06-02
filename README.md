@@ -29,29 +29,29 @@ Explore the interactive capabilities of the library through these full-screen sh
 ### ✨ Live Physics Examples
 A fully tunable physics sandbox to play with viscosity, blobs, flow intensity, and 3D AGSL refraction shaders.
 <p align="center">
-  <img src="media/water.gif" width="500" alt="Water Viscosity"/>
-  <img src="media/hony.gif" width="500" alt="Honey Viscosity"/>
+  <img src="media/water.gif" width="600" alt="Water Viscosity"/>
+  <img src="media/hony.gif" width="600" alt="Honey Viscosity"/>
   <br>
-  <img src="media/plus.gif" width="500" alt="Pulse Effect"/>
+  <img src="media/plus.gif" width="600" alt="Pulse Effect"/>
 </p>
 
 ### 💧 Liquid Image Warp
 Slice any image into a viscous fluid! Smear and distort it with touch, and watch the organic spring physics restore it.
 <p align="center">
-  <img src="media/fluid_image.gif" width="500" alt="Liquid Image Warp"/>
+  <img src="media/fluid_image.gif" width="600" alt="Liquid Image Warp"/>
 </p>
 
 ### 🎙️ Audio-Reactive Engine
 Transform your microphone input into a living audio visualizer. The metaballs violently scale and glow to the beat while micro-particles drift based on frequency.
 <p align="center">
-  <img src="media/audio_reactive.gif" width="500" alt="Audio Reactive Engine"/>
+  <img src="media/audio_reactive.gif" width="600" alt="Audio Reactive Engine"/>
 </p>
 
 ### 🌌 Ambient Modes (Zero & Reverse Gravity)
 Invert gravity to simulate Wax Rain, or disable it entirely for a calm Zero-Gravity space drift effect.
 <p align="center">
-  <img src="media/revers%20gravity.gif" width="500" alt="Reverse Gravity"/>
-  <img src="media/zero%20gravity.gif" width="500" alt="Zero Gravity"/>
+  <img src="media/revers%20gravity.gif" width="600" alt="Reverse Gravity"/>
+  <img src="media/zero%20gravity.gif" width="600" alt="Zero Gravity"/>
 </p>
 
 ---
