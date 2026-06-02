@@ -59,7 +59,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.vectorResource
 import androidx.core.content.ContextCompat
 
-enum class Screen { HOME, SPLASH, LOGIN, CUSTOM_OBJECTS, SANDBOX, OBSTACLE_DEMO, FLUID_IMAGE_DEMO, AUDIO_REACTIVE }
+enum class Screen { HOME, SPLASH, LOGIN, CUSTOM_OBJECTS, SANDBOX, OBSTACLE_DEMO, FLUID_IMAGE_DEMO, AUDIO_REACTIVE, LINKEDIN_DEMO }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,6 +77,7 @@ class MainActivity : ComponentActivity() {
                         Screen.OBSTACLE_DEMO -> ObstacleDemoScreen  { currentScreen = Screen.HOME }
                         Screen.FLUID_IMAGE_DEMO -> FluidImageDemoScreen { currentScreen = Screen.HOME }
                         Screen.AUDIO_REACTIVE -> AudioReactiveDemoScreen { currentScreen = Screen.HOME }
+                        Screen.LINKEDIN_DEMO  -> LinkedInDemoScreen { currentScreen = Screen.HOME }
                     }
                 }
             }
@@ -251,6 +252,12 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
             // Feature cards
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    NavCard(
+                        emoji = "🎬", title = "Cinematic Showcase",
+                        desc = "Clean minimalist UI designed for screen recording",
+                        accent = Color(0xFFFF3366)
+                    ) { onNavigate(Screen.LINKEDIN_DEMO) }
+
                     NavCard(
                         emoji = "🎬", title = "Splash Screen",
                         desc = "Fluid logo animation as app loading screen",
@@ -1482,5 +1489,103 @@ fun SpectrumBar(label: String, value: Float, color: Color, modifier: Modifier = 
         }
         Spacer(modifier = Modifier.height(4.dp))
         Text(text = label, color = Color.White.copy(alpha = 0.6f), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+// =======================================================================
+// LINKEDIN DEMO SCREEN
+// =======================================================================
+@Composable
+fun LinkedInDemoScreen(onBack: () -> Unit) {
+    BackHandler { onBack() }
+    
+    // Toggles for big visual impacts
+    var viscosityMode by remember { mutableStateOf(LavaViscosity.STANDARD) }
+    var gravityDown by remember { mutableStateOf(false) }
+    var zeroGravity by remember { mutableStateOf(false) }
+    var neonDust by remember { mutableStateOf(false) }
+    var audioReact by remember { mutableStateOf(false) }
+    var currentStyle by remember { mutableStateOf(LavaLampStyle.CYBERPUNK) }
+    var isGlassBottle by remember { mutableStateOf(false) }
+
+    // Derived properties
+    val actualGravity = when {
+        zeroGravity -> LavaGravity.ZERO_GRAVITY
+        gravityDown -> LavaGravity.DOWN
+        else -> LavaGravity.UP
+    }
+    
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF04020A))) {
+        LavaLamp(
+            modifier = Modifier.fillMaxSize(),
+            blobCount = if (viscosityMode == LavaViscosity.WATER) 14 else 6,
+            speed = if (zeroGravity) 0.15f else (if (viscosityMode == LavaViscosity.WATER) 1.5f else 0.8f),
+            viscosity = viscosityMode,
+            gravityMode = actualGravity,
+            mode = LavaMode.Vector(currentStyle),
+            enableParticles = neonDust,
+            particleCount = 90,
+            audioInfluence = if (audioReact) 1.2f else 0f,
+            containerMode = if (isGlassBottle) LavaContainerMode.GLASS_BOTTLE else LavaContainerMode.AMBIENT_BACKGROUND,
+            glassStyle = LavaGlassStyle.REALISTIC_3D,
+            physicsConfig = LavaPhysicsConfig(
+                touchInfluence = 2.0f,
+                shakeInfluence = 1.5f,
+                softRepulsion = 120f
+            ),
+            shaderConfig = LavaShaderConfig(
+                enabled = true,
+                refractionStrength = 15f,
+                specularIntensity = 1.0f,
+                specularPower = 35f
+            )
+        )
+        
+        ShowcaseHeader(
+            title = "LavaLamp Showcase",
+            subtitle = "Quick visual feature tour",
+            label = "LINKEDIN DEMO",
+            color = Color(0xFFFF3366),
+            onBack = onBack
+        )
+
+        // Minimalist control panel for video recording
+        LazyRow(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 32.dp)
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            item { DemoChip("💧 Water", viscosityMode == LavaViscosity.WATER) { viscosityMode = if (it) LavaViscosity.WATER else LavaViscosity.STANDARD } }
+            item { DemoChip("🍯 Honey", viscosityMode == LavaViscosity.THICK_HONEY) { viscosityMode = if (it) LavaViscosity.THICK_HONEY else LavaViscosity.STANDARD } }
+            item { DemoChip("⬇️ Gravity Drop", gravityDown) { gravityDown = it; if(it) zeroGravity = false } }
+            item { DemoChip("🌌 Zero-G", zeroGravity) { zeroGravity = it; if(it) gravityDown = false } }
+            item { DemoChip("🎙️ Audio React", audioReact) { audioReact = it } }
+            item { DemoChip("✨ Particles", neonDust) { neonDust = it } }
+            item { DemoChip("🌊 Ocean Theme", currentStyle == LavaLampStyle.DEEP_OCEAN) { currentStyle = if (it) LavaLampStyle.DEEP_OCEAN else LavaLampStyle.CYBERPUNK } }
+            item { DemoChip("🍾 Glass Bottle", isGlassBottle) { isGlassBottle = it } }
+        }
+    }
+}
+
+@Composable
+fun DemoChip(text: String, active: Boolean, onToggle: (Boolean) -> Unit) {
+    Surface(
+        onClick = { onToggle(!active) },
+        shape = RoundedCornerShape(20.dp),
+        color = if (active) Color(0xFFFF3366) else Color(0xFF161622).copy(alpha = 0.8f),
+        border = BorderStroke(1.dp, if (active) Color.Transparent else Color.White.copy(alpha = 0.2f)),
+        modifier = Modifier.height(42.dp)
+    ) {
+        Box(modifier = Modifier.padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
+            Text(
+                text = text, 
+                color = Color.White, 
+                fontSize = 13.sp, 
+                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium
+            )
+        }
     }
 }
