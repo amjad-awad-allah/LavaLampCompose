@@ -59,7 +59,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.vectorResource
 import androidx.core.content.ContextCompat
 
-enum class Screen { HOME, SPLASH, LOGIN, CUSTOM_OBJECTS, SANDBOX, OBSTACLE_DEMO, FLUID_IMAGE_DEMO, AUDIO_REACTIVE, LINKEDIN_DEMO }
+enum class Screen { HOME, SPLASH, LOGIN, CUSTOM_OBJECTS, SANDBOX, OBSTACLE_DEMO, FLUID_IMAGE_DEMO, AUDIO_REACTIVE, LINKEDIN_DEMO, COLOR_BLEND_DEMO }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,6 +78,7 @@ class MainActivity : ComponentActivity() {
                         Screen.FLUID_IMAGE_DEMO -> FluidImageDemoScreen { currentScreen = Screen.HOME }
                         Screen.AUDIO_REACTIVE -> AudioReactiveDemoScreen { currentScreen = Screen.HOME }
                         Screen.LINKEDIN_DEMO  -> LinkedInDemoScreen { currentScreen = Screen.HOME }
+                        Screen.COLOR_BLEND_DEMO -> ColorBlendDemoScreen { currentScreen = Screen.HOME }
                     }
                 }
             }
@@ -299,6 +300,12 @@ fun HomeScreen(onNavigate: (Screen) -> Unit) {
                         desc = "Metaballs dance and dust shifts to sound frequencies in real time",
                         accent = Color(0xFFFFCC00)
                     ) { onNavigate(Screen.AUDIO_REACTIVE) }
+
+                    NavCard(
+                        emoji = "🌈", title = "Color Blending Magic",
+                        desc = "Experience pure additive liquid color mixing in real time",
+                        accent = Color(0xFFE040FB)
+                    ) { onNavigate(Screen.COLOR_BLEND_DEMO) }
                 }
             }
         }
@@ -1585,6 +1592,55 @@ fun DemoChip(text: String, active: Boolean, onToggle: (Boolean) -> Unit) {
                 color = Color.White, 
                 fontSize = 13.sp, 
                 fontWeight = if (active) FontWeight.Bold else FontWeight.Medium
+            )
+        }
+    }
+}
+
+// =======================================================================
+// COLOR BLEND DEMO SCREEN
+// =======================================================================
+@Composable
+fun ColorBlendDemoScreen(onBack: () -> Unit) {
+    BackHandler { onBack() }
+    
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0F0818))) {
+        LavaLamp(
+            modifier = Modifier.fillMaxSize(),
+            blobCount = 6,
+            blobScale = 1.3f,
+            speed = 1.0f,
+            flowIntensity = 0.6f,
+            containerMode = LavaContainerMode.AMBIENT_BACKGROUND,
+            interactive = true,
+            enableColorMixing = true,
+            mode = LavaMode.Vector(LavaLampStyle.CYBERPUNK),
+            physicsConfig = LavaPhysicsConfig(
+                touchInfluence = 2.5f,
+                shakeInfluence = 2.0f
+            )
+        )
+
+        ShowcaseHeader(
+            title = "Color Blending",
+            subtitle = "Additive fluid merging physics",
+            label = "NEW FEATURE",
+            color = Color(0xFFE040FB),
+            onBack = onBack
+        )
+
+        // Bottom tip
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 40.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.Black.copy(0.5f))
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+        ) {
+            Text(
+                "👆 Drag liquids together to mix their colors!",
+                color = Color.White.copy(0.75f), fontSize = 13.sp, textAlign = TextAlign.Center
             )
         }
     }

@@ -418,7 +418,9 @@ fun LavaLamp(
     audioInfluence: Float = 0f,
     audioFrequencyBands: List<Float> = emptyList(),
     enableParticles: Boolean = false,
-    particleCount: Int = 80
+    particleCount: Int = 80,
+    enableColorMixing: Boolean = false,
+    colorMixingRate: Float = 0.5f
 ) {
     require(blobCount > 0) { "LavaLamp: blobCount must be greater than 0 (provided: $blobCount)" }
     require(blobScale > 0f) { "LavaLamp: blobScale must be positive (provided: $blobScale)" }
@@ -931,6 +933,14 @@ fun LavaLamp(
                             blobI.vy += fy * physicsConfig.smoothingWeight
                             blobJ.vx -= fx * physicsConfig.smoothingWeight
                             blobJ.vy -= fy * physicsConfig.smoothingWeight
+                        }
+
+                        // Physical Color Mixing
+                        if (enableColorMixing && dist < interactionRadius) {
+                            val mixRate = (colorMixingRate * delta * 2f).coerceIn(0f, 1f)
+                            val mixedColor = blendColorsHSV(blobI.color, blobJ.color, 0.5f)
+                            blobI.color = lerpColorHSV(blobI.color, mixedColor, mixRate)
+                            blobJ.color = lerpColorHSV(blobJ.color, mixedColor, mixRate)
                         }
                     }
                 }
@@ -1500,18 +1510,34 @@ fun LavaLamp(
                             radius *= recoilScale
                         }
 
+                        // Thermal & Kinetic Color Shift
+                        val verticalRatio = ((blob.y - glassTop) / lampHeight).coerceIn(0f, 1f)
+                        val speedFactor = hypot(blob.vx, blob.vy) / 380f // 380 is maxSpeed
+                        
+                        // Warmer colors at bottom, slightly cooler/darker at top
+                        // Higher speed = brighter glow
+                        val rFactor = (0.8f + 0.2f * verticalRatio + 0.1f * speedFactor).coerceIn(0f, 1f)
+                        val gFactor = (0.9f + 0.1f * speedFactor).coerceIn(0f, 1f)
+                        val bFactor = (1.0f - 0.2f * verticalRatio + 0.1f * speedFactor).coerceIn(0f, 1f)
+                        
+                        val thermalColor = Color(
+                            red = blob.color.red * rFactor,
+                            green = blob.color.green * gFactor,
+                            blue = blob.color.blue * bFactor,
+                            alpha = blob.color.alpha
+                        )
+
                         // Audio dynamic white blend glow color shift
-                        val baseColor = blob.color
                         val resolvedColor = if (bandValue > 0.05f) {
                             val blendFactor = bandValue * 0.85f
                             Color(
-                                red = baseColor.red * (1f - blendFactor) + 1.0f * blendFactor,
-                                green = baseColor.green * (1f - blendFactor) + 1.0f * blendFactor,
-                                blue = baseColor.blue * (1f - blendFactor) + 1.0f * blendFactor,
-                                alpha = baseColor.alpha
+                                red = thermalColor.red * (1f - blendFactor) + 1.0f * blendFactor,
+                                green = thermalColor.green * (1f - blendFactor) + 1.0f * blendFactor,
+                                blue = thermalColor.blue * (1f - blendFactor) + 1.0f * blendFactor,
+                                alpha = thermalColor.alpha
                             )
                         } else {
-                            baseColor
+                            thermalColor
                         }
 
                         if (fluidImage != null && blob.originalX != -1f) {
@@ -1544,7 +1570,7 @@ fun LavaLamp(
                                 ),
                                 radius = radius,
                                 center = Offset(blob.x, blob.y),
-                                blendMode = BlendMode.SrcOver
+                                blendMode = BlendMode.Plus
                             )
                         }
                     }
@@ -1698,6 +1724,11 @@ private const val AGSL_SHADER = """
             return half4(0.0);
         }
         
+        // Liquid Color Normalization (Metaball Color Blending)
+        // Decode pre-multiplied additive colors resulting from BlendMode.Plus
+        float3 fluidColor = color.rgb / max(color.a, 0.0001);
+        color.rgb = clamp(fluidColor, 0.0, 1.0);
+        
         float delta = 2.0; 
         float a_left  = inputShader.eval(coord + float2(-delta, 0.0)).a;
         float a_right = inputShader.eval(coord + float2(delta, 0.0)).a;
@@ -1729,3 +1760,31 @@ private const val AGSL_SHADER = """
         return half4(finalColor, finalAlpha);
     }
 """
+
+private fun blendColorsHSV(color1: Color, color2: Color, fraction: Float): Color {
+    return lerpColorHSV(color1, color2, fraction)
+}
+
+private fun lerpColorHSV(color1: Color, color2: Color, fraction: Float): Color {
+    val hsv1 = FloatArray(3)
+    val hsv2 = FloatArray(3)
+    android.graphics.Color.colorToHSV(color1.toArgb(), hsv1)
+    android.graphics.Color.colorToHSV(color2.toArgb(), hsv2)
+    
+    var h1 = hsv1[0]
+    var h2 = hsv2[0]
+    val diff = h2 - h1
+    if (diff > 180f) {
+        h1 += 360f
+    } else if (diff < -180f) {
+        h2 += 360f
+    }
+    
+    val h = ((h1 + (h2 - h1) * fraction) % 360f + 360f) % 360f
+    val s = hsv1[1] + (hsv2[1] - hsv1[1]) * fraction
+    val v = hsv1[2] + (hsv2[2] - hsv1[2]) * fraction
+    val a = color1.alpha + (color2.alpha - color1.alpha) * fraction
+    
+    val blendedInt = android.graphics.Color.HSVToColor((a * 255).toInt(), floatArrayOf(h, s, v))
+    return Color(blendedInt)
+}
