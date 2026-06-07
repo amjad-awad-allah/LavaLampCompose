@@ -1,15 +1,19 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.compose.compiler)
+    `maven-publish`
 }
  
 // Library Artifact Metadata for JitPack/Maven Central Publishing
 val libraryGroupId = "com.example.lavalamp"
 val libraryArtifactId = "lavalamp"
-val libraryVersion = "2.5.0"
+val libraryVersion = "2.5.1"
 
 android {
     namespace = "com.example.lavalamp"
+    publishing {
+        singleVariant("release")
+    }
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
