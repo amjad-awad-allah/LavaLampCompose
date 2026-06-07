@@ -5,8 +5,8 @@ plugins {
 }
  
 // Library Artifact Metadata for JitPack/Maven Central Publishing
-val libraryGroupId = "com.example.lavalamp"
-val libraryArtifactId = "lavalamp"
+val libraryGroupId = "com.github.amjad-awad-allah"
+val libraryArtifactId = "LavaLampCompose"
 val libraryVersion = "2.5.1"
 
 android {
@@ -51,4 +51,17 @@ dependencies {
     implementation(libs.androidx.foundation)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.material3)
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            create<MavenPublication>("release") {
+                from(components["release"])
+                groupId = libraryGroupId
+                artifactId = libraryArtifactId
+                version = libraryVersion
+            }
+        }
+    }
 }
