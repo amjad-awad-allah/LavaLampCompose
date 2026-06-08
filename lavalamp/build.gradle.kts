@@ -7,7 +7,7 @@ plugins {
 // Library Artifact Metadata for JitPack/Maven Central Publishing
 val libraryGroupId = "com.github.amjad-awad-allah"
 val libraryArtifactId = "LavaLampCompose"
-val libraryVersion = "2.5.3"
+val libraryVersion = "2.5.5"
 
 android {
     namespace = "com.example.lavalamp"
@@ -33,8 +33,13 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
     buildFeatures {
         compose = true
