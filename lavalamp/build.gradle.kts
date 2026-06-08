@@ -7,18 +7,15 @@ plugins {
 // Library Artifact Metadata for JitPack/Maven Central Publishing
 val libraryGroupId = "com.github.amjad-awad-allah"
 val libraryArtifactId = "LavaLampCompose"
-val libraryVersion = "2.5.1"
+val libraryVersion = "2.5.3"
 
 android {
     namespace = "com.example.lavalamp"
     publishing {
         singleVariant("release")
     }
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 35
+
 
     defaultConfig {
         minSdk = 24
