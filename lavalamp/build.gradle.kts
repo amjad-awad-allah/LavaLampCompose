@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
     `maven-publish`
 }
@@ -7,7 +8,7 @@ plugins {
 // Library Artifact Metadata for JitPack/Maven Central Publishing
 val libraryGroupId = "com.github.amjad-awad-allah"
 val libraryArtifactId = "LavaLampCompose"
-val libraryVersion = "2.5.6"
+val libraryVersion = "2.5.7"
 
 android {
     namespace = "com.example.lavalamp"
