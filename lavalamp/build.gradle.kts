@@ -8,7 +8,7 @@ plugins {
 // Library Artifact Metadata for JitPack/Maven Central Publishing
 val libraryGroupId = "com.github.amjad-awad-allah"
 val libraryArtifactId = "LavaLampCompose"
-val libraryVersion = "2.5.7"
+val libraryVersion = "2.5.8"
 
 android {
     namespace = "com.example.lavalamp"

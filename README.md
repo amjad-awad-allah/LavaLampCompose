@@ -2,7 +2,7 @@
 
 [![Build Status](https://img.shields.io/badge/Android-100%25%20Build%20Successful-brightgreen.svg?style=for-the-badge&logo=android)](https://developer.android.com)
 [![Platform](https://img.shields.io/badge/Compose-v2026.05.00-purple.svg?style=for-the-badge&logo=jetpackcompose)](https://developer.android.com)
-[![Release Version](https://img.shields.io/badge/Release-v2.5.7-blue.svg?style=for-the-badge&logo=github)](https://github.com/amjad-awad-allah/LavaLampCompose)
+[![Release Version](https://img.shields.io/badge/Release-v2.5.8-blue.svg?style=for-the-badge&logo=github)](https://github.com/amjad-awad-allah/LavaLampCompose)
 [![License](https://img.shields.io/badge/License-MIT-orange.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 **LavaLamp** is a premium, state-of-the-art viscous fluid physics simulation library designed exclusively for **Jetpack Compose**. It brings beautiful organic fluid metaballs, 3D AGSL refraction shaders, physical obstacle deflection, liquid image warp with spring-based restoration, an audio-reactive visualizer engine, floating micro-particles, and tactile physical feedback to Android with high-performance GPU processing.
@@ -58,7 +58,7 @@ Invert gravity to simulate Wax Rain, or disable it entirely for a calm Zero-Grav
 
 ## 📦 Installation & Versioning
 
-You can integrate this library directly into any Android application using **JitPack** and the GitHub release tag **`2.5.7`**.
+You can integrate this library directly into any Android application using **JitPack** and the GitHub release tag **`2.5.8`**.
 
 ### 1. Register JitPack Repository
 Add the JitPack maven repository to your root project's `settings.gradle.kts` file:
@@ -79,7 +79,7 @@ Add the dependency to your app's `build.gradle.kts` file:
 
 ```kotlin
 dependencies {
-    implementation("com.github.amjad-awad-allah:LavaLampCompose:2.5.7")
+    implementation("com.github.amjad-awad-allah:LavaLampCompose:2.5.8")
 }
 ```
 
@@ -320,6 +320,11 @@ If you are using R8/Proguard, add the following line to keep Skia/Compose drawin
 ---
 
 ## 📅 Changelog
+
+### [v2.5.8] - 2026-06-09
+- **Root Stability Fix**: Downgraded all dependencies to stable, production-ready versions.
+- **Maximum Compatibility**: Re-aligned versions with SDK 35 and stable Compose BOM.
+- **JitPack Deployment**: Optimized for zero-error builds on remote CI environments.
 
 ### [v2.5.7] - 2026-06-09
 - **Plugin Fix**: Explicitly added missing `kotlin-android` plugin to build files for proper script compilation.
