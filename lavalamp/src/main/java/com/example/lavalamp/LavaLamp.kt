@@ -425,7 +425,7 @@ fun LavaLamp(
     noiseOverlay: Boolean = true,
     lampRotation: Float = 0f,
     gravityMode: LavaGravity = LavaGravity.UP,
-    containerMode: LavaContainerMode = LavaContainerMode.GLASS_BOTTLE,
+    containerMode: LavaContainerMode = LavaContainerMode.AMBIENT_BACKGROUND,
     glassStyle: LavaGlassStyle = LavaGlassStyle.REALISTIC_3D,
     viscosity: LavaViscosity = LavaViscosity.STANDARD,
     pulseSpeed: Float = 0f,

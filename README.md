@@ -260,7 +260,7 @@ fun InteractiveImageWarp(imageBitmap: ImageBitmap) {
 | `noiseOverlay` | `Boolean` | `true` | Premium micro-grain analog matte texture. |
 | `lampRotation` | `Float` | `0f` | Rotational tilt offset in degrees for gravity inversion. |
 | `gravityMode` | `LavaGravity` | `UP` | Gravity direction: `UP`, `DOWN`, or `ZERO_GRAVITY`. |
-| `containerMode` | `LavaContainerMode` | `GLASS_BOTTLE` | `GLASS_BOTTLE` or `AMBIENT_BACKGROUND`. |
+| `containerMode` | `LavaContainerMode` | `AMBIENT_BACKGROUND` | `GLASS_BOTTLE` or `AMBIENT_BACKGROUND`. |
 | `glassStyle` | `LavaGlassStyle` | `REALISTIC_3D` | Chrome and gloss reflections style: `REALISTIC_3D` or `FLAT_2D`. |
 | `viscosity` | `LavaViscosity` | `STANDARD` | Fusion thickness: `WATER`, `STANDARD`, or `THICK_HONEY`. |
 | `pulseSpeed` | `Float` | `0f` | Breathing oscillation rate in Hz (0f to disable). |
@@ -328,6 +328,7 @@ If you are using R8/Proguard, add the following line to keep Skia/Compose drawin
 - **Audio Thread ANR Prevented**: Prevented background audio thread blocking on thread joins by releasing native `AudioRecord` resources first.
 - **SPH & Scale Boundaries**: Rescaled physics SPH loop parameters with `blobScale` to prevent overlapping visual collisions.
 - **Bottle Neck Jitter Fixed**: Clamped radius boundary width inputs to prevent bounce jitter/oscillation on large blobs or narrow bottles.
+- **Container Mode Default Change**: Switched default `containerMode` from `LavaContainerMode.GLASS_BOTTLE` to `LavaContainerMode.AMBIENT_BACKGROUND` (fluid background without glass bottle wrapper) to provide a modern full-screen ambient behavior out of the box.
 - **Code Clean-up**: Deleted dead file `LavaLampComponent.kt`.
 
 ### [v2.5.8] - 2026-06-09
