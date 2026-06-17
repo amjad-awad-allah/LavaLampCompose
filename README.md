@@ -2,7 +2,7 @@
 
 [![Build Status](https://img.shields.io/badge/Android-100%25%20Build%20Successful-brightgreen.svg?style=for-the-badge&logo=android)](https://developer.android.com)
 [![Platform](https://img.shields.io/badge/Compose-v2026.05.00-purple.svg?style=for-the-badge&logo=jetpackcompose)](https://developer.android.com)
-[![Release Version](https://img.shields.io/badge/Release-v2.5.8-blue.svg?style=for-the-badge&logo=github)](https://github.com/amjad-awad-allah/LavaLampCompose)
+[![Release Version](https://img.shields.io/badge/Release-v2.5.9-blue.svg?style=for-the-badge&logo=github)](https://github.com/amjad-awad-allah/LavaLampCompose)
 [![License](https://img.shields.io/badge/License-MIT-orange.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 **LavaLamp** is a premium, state-of-the-art viscous fluid physics simulation library designed exclusively for **Jetpack Compose**. It brings beautiful organic fluid metaballs, 3D AGSL refraction shaders, physical obstacle deflection, liquid image warp with spring-based restoration, an audio-reactive visualizer engine, floating micro-particles, and tactile physical feedback to Android with high-performance GPU processing.
@@ -320,6 +320,15 @@ If you are using R8/Proguard, add the following line to keep Skia/Compose drawin
 ---
 
 ## 📅 Changelog
+
+### [v2.5.9] - 2026-06-17
+- **Performance & Allocation Optimization**: Cached metaball render effect chains, glass path assets, and metallic gradients to prevent garbage collection frame drops.
+- **HSV ThreadLocal Optimization**: Added `ThreadLocal` scratch arrays to completely eliminate per-pair `FloatArray` allocations inside the color mixing SPH loop.
+- **Lifecycle Privacy Safe**: Automatically pauses audio processor microphone recording and sensor updates when application lifecycle shifts to `ON_PAUSE`, removing background privacy indicators.
+- **Audio Thread ANR Prevented**: Prevented background audio thread blocking on thread joins by releasing native `AudioRecord` resources first.
+- **SPH & Scale Boundaries**: Rescaled physics SPH loop parameters with `blobScale` to prevent overlapping visual collisions.
+- **Bottle Neck Jitter Fixed**: Clamped radius boundary width inputs to prevent bounce jitter/oscillation on large blobs or narrow bottles.
+- **Code Clean-up**: Deleted dead file `LavaLampComponent.kt`.
 
 ### [v2.5.8] - 2026-06-09
 - **Root Stability Fix**: Downgraded all dependencies to stable, production-ready versions.

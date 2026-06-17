@@ -3,10 +3,8 @@ package com.example.lavalamp
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapShader
-import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
-import android.graphics.Rect
 import android.graphics.Shader
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -121,13 +119,27 @@ class LavaParticle(
 )
 
 /**
+ * Internal holder for non-Compose, high-frequency physics inputs.
+ * Updates from sensor callbacks write here without triggering recomposition.
+ */
+internal class LavaSensorHolder {
+    @Volatile var tiltX: Float = 0f
+    @Volatile var tiltY: Float = 0f
+    @Volatile var shakeTriggered: Boolean = false
+}
+
+// Reusable scratch arrays for HSV color blending; avoids per-pair allocations.
+private val hsvScratchA = ThreadLocal.withInitial { FloatArray(3) }
+private val hsvScratchB = ThreadLocal.withInitial { FloatArray(3) }
+
+/**
  * A lightweight, high-performance physical audio analysis helper for driving the Lava Lamp component.
  * It monitors the device microphone and splits the incoming sound frequencies into three primary bands:
  * Bass, Midrange, and Treble/Highs, returning smoothed intensities in [0..1] range.
  */
 class LavaAudioProcessor(private val context: Context) {
     private var audioRecord: android.media.AudioRecord? = null
-    private var isRecording = false
+    @Volatile private var isRecording = false
     private var recordingThread: Thread? = null
     
     // Smooth frequency bands (Bass, Mids, Highs)
@@ -157,6 +169,7 @@ class LavaAudioProcessor(private val context: Context) {
     private var hpTreblePrev = 0f
     private var hpTreblePrevX = 0f
 
+    @Synchronized
     fun start() {
         if (isRecording) return
         
@@ -188,26 +201,27 @@ class LavaAudioProcessor(private val context: Context) {
         audioRecord?.startRecording()
 
         recordingThread = Thread({
+            // Lower thread priority to reduce contention with UI/render threads.
+            try { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND) } catch (_: Throwable) {}
             val buffer = ShortArray(bufferSize)
-            while (isRecording) {
+            while (isRecording && !Thread.currentThread().isInterrupted) {
                 val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
                 if (read > 0) {
                     analyzeAudio(buffer, read)
                 }
             }
-        }, "LavaAudioProcessor-Thread")
+        }, "LavaAudioProcessor-Thread").apply {
+            isDaemon = true
+        }
         recordingThread?.start()
     }
 
+    @Synchronized
     fun stop() {
         isRecording = false
-        try {
-            recordingThread?.join(500)
-        } catch (e: InterruptedException) {
-            Thread.currentThread().interrupt()
-        }
-        recordingThread = null
-
+        // Release audioRecord FIRST so that the blocking AudioRecord.read() call
+        // in the background thread returns immediately (native read unblocks on release).
+        // Then join the thread which now exits quickly.
         try {
             audioRecord?.stop()
             audioRecord?.release()
@@ -215,6 +229,14 @@ class LavaAudioProcessor(private val context: Context) {
             // Ignore
         }
         audioRecord = null
+
+        try {
+            recordingThread?.interrupt()
+            recordingThread?.join(500)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+        }
+        recordingThread = null
     }
 
     private fun analyzeAudio(buffer: ShortArray, readSize: Int) {
@@ -459,8 +481,22 @@ fun LavaLamp(
     var time by remember { mutableFloatStateOf(0f) }
     var size by remember { mutableStateOf(IntSize.Zero) }
     var touchPosition by remember { mutableStateOf<Offset?>(null) }
-    var tiltOffset by remember { mutableStateOf(Offset.Zero) }
-    var shakeTriggered by remember { mutableStateOf(false) } // Detects vigorous phone shake
+    val sensorHolder = remember { LavaSensorHolder() }
+
+    // Stable references for hot collections so the physics loop is not restarted on every recomposition.
+    val currentAudioBands by rememberUpdatedState(audioFrequencyBands)
+
+    // rememberUpdatedState for all parameters read inside the physics coroutine but NOT listed
+    // in LaunchedEffect keys. Without this, the coroutine captures stale values from the first
+    // composition — e.g. changing gravity in the sandbox would have no effect.
+    val currentGravityMode        by rememberUpdatedState(gravityMode)
+    val currentPhysicsConfig      by rememberUpdatedState(physicsConfig)
+    val currentInteractive        by rememberUpdatedState(interactive)
+    val currentContainerMode      by rememberUpdatedState(containerMode)
+    val currentFluidImage         by rememberUpdatedState(fluidImage)
+    val currentImageRestoration   by rememberUpdatedState(imageRestorationStrength)
+    val currentEnableTiltDeform   by rememberUpdatedState(enableTiltDeformation)
+    val currentBlobScale          by rememberUpdatedState(blobScale)
  
     // Resolve rendering mode options
     val style = when (mode) {
@@ -492,63 +528,71 @@ fun LavaLamp(
     // Transparent vs Solid styles background support
     val resolvedBgColor = if (background == LavaBackground.Transparent) Color.Transparent else style.backgroundColor
 
-    // 1. Gyroscope/Sensor gravity and shake listener (Automatically unregisters in background for lifecycle resume/pause safety)
-    if (sensorReactive && isLifecycleResumed) {
-        DisposableEffect(Unit) {
-            val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-            val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-            val listener = object : SensorEventListener {
-                var lastX = 0f
-                var lastY = 0f
-                var lastZ = 0f
-                var lastUpdate = System.currentTimeMillis()
-                
-                var smoothX = 0f
-                var smoothY = 0f
-
-                override fun onSensorChanged(event: SensorEvent?) {
-                    if (event != null) {
-                        val currentTime = System.currentTimeMillis()
-                        val diffTime = currentTime - lastUpdate
-                        if (diffTime > 90) { // Throttle calculations to avoid overhead
-                            lastUpdate = currentTime
-                            val x = event.values[0]
-                            val y = event.values[1]
-                            val z = event.values[2]
-
-                            if (lastX != 0f) {
-                                val deltaX = x - lastX
-                                val deltaY = y - lastY
-                                val deltaZ = z - lastZ
-                                // Calculate total acceleration delta (jerk)
-                                val acceleration = kotlin.math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ)
-                                
-                                // Threshold of 13.5f represents a clear, active shake of the handset
-                                if (acceleration > 13.5f) {
-                                    shakeTriggered = true
-                                }
-                            }
-                            lastX = x
-                            lastY = y
-                            lastZ = z
-                        }
-
-                        // Smooth tilt values
-                        smoothX = smoothX * 0.85f + (-event.values[0] * 18f) * 0.15f
-                        smoothY = smoothY * 0.85f + (event.values[1] * 18f) * 0.15f
-                        tiltOffset = Offset(smoothX, smoothY)
-                    }
-                }
-                override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-            }
-            sensorManager.registerListener(listener, accelerometer, SensorManager.SENSOR_DELAY_GAME)
-            onDispose {
-                sensorManager.unregisterListener(listener)
-            }
+    // 1. Gyroscope/Sensor gravity and shake listener.
+    // Lifecycle-safe: registered only when sensorReactive is true; the listener writes to a
+    // plain holder (no Compose state) to avoid recompositions on every sensor tick (~50Hz).
+    DisposableEffect(sensorReactive, isLifecycleResumed) {
+        if (!sensorReactive || !isLifecycleResumed) {
+            sensorHolder.tiltX = 0f
+            sensorHolder.tiltY = 0f
+            sensorHolder.shakeTriggered = false
+            return@DisposableEffect onDispose {}
         }
-    } else {
-        tiltOffset = Offset.Zero
-        shakeTriggered = false
+        val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        val listener = object : SensorEventListener {
+            var lastX = 0f
+            var lastY = 0f
+            var lastZ = 0f
+            var lastUpdate = System.currentTimeMillis()
+
+            var smoothX = 0f
+            var smoothY = 0f
+
+            override fun onSensorChanged(event: SensorEvent?) {
+                if (event != null) {
+                    val currentTime = System.currentTimeMillis()
+                    val diffTime = currentTime - lastUpdate
+                    if (diffTime > 90) { // Throttle calculations to avoid overhead
+                        lastUpdate = currentTime
+                        val x = event.values[0]
+                        val y = event.values[1]
+                        val z = event.values[2]
+
+                        if (lastX != 0f) {
+                            val deltaX = x - lastX
+                            val deltaY = y - lastY
+                            val deltaZ = z - lastZ
+                            // Calculate total acceleration delta (jerk)
+                            val acceleration = kotlin.math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ)
+
+                            // Threshold of 13.5f represents a clear, active shake of the handset
+                            if (acceleration > 13.5f) {
+                                sensorHolder.shakeTriggered = true
+                            }
+                        }
+                        lastX = x
+                        lastY = y
+                        lastZ = z
+                    }
+
+                    // Smooth tilt values
+                    smoothX = smoothX * 0.85f + (-event.values[0] * 18f) * 0.15f
+                    smoothY = smoothY * 0.85f + (event.values[1] * 18f) * 0.15f
+                    sensorHolder.tiltX = smoothX
+                    sensorHolder.tiltY = smoothY
+                }
+            }
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+        }
+        // SENSOR_DELAY_UI (~60ms) is sufficient for tilt; saves significant battery vs SENSOR_DELAY_GAME.
+        sensorManager.registerListener(listener, accelerometer, SensorManager.SENSOR_DELAY_UI)
+        onDispose {
+            sensorManager.unregisterListener(listener)
+            sensorHolder.tiltX = 0f
+            sensorHolder.tiltY = 0f
+            sensorHolder.shakeTriggered = false
+        }
     }
 
     // 2. Initialize dynamic physical blobs list inside a SnapshotStateList to allow runtime addition/removal (splitting)
@@ -568,12 +612,11 @@ fun LavaLamp(
         }
     }
 
-    // Update colors of the existing blobs dynamically in-place when style/colors change
-    SideEffect {
+    // Update colors of the existing blobs in-place when style/colors change.
+    // LaunchedEffect (not SideEffect) so this runs only on actual change, not every recomposition.
+    LaunchedEffect(activeColors) {
         blobs.forEachIndexed { index, blob ->
-            if (index < blobs.size) {
-                blob.color = activeColors[index % activeColors.size]
-            }
+            blob.color = activeColors[index % activeColors.size]
         }
     }
 
@@ -606,20 +649,20 @@ fun LavaLamp(
         }
     }
 
-    // 3. Physics engine loop inside LaunchedEffect (uses self-sustaining delay to bypass Choreographer idle sleeps)
-    LaunchedEffect(blobs, size, speed, flowIntensity, enableParticles, audioInfluence, audioFrequencyBands) {
-        var lastTime = System.nanoTime()
+    // 3. Physics engine loop.
+    // Uses withFrameNanos so the simulation is naturally paused by Compose when no frames
+    // are produced (screen off, app backgrounded, low-power mode) -- huge battery win vs delay(16).
+    LaunchedEffect(blobs, size, speed, flowIntensity, enableParticles, audioInfluence) {
+        var lastTime = 0L
         var prevTouchPos: Offset? = null
         while (isActive) {
-            // Guarantee continuous ticking at ~60fps independently of screen draw passes (paused when app is in background)
-            kotlinx.coroutines.delay(16)
-            if (!isLifecycleResumed) {
-                lastTime = System.nanoTime()
+            val currentTime = withFrameNanos { it }
+            if (lastTime == 0L) {
+                lastTime = currentTime
                 continue
             }
-
-            val currentTime = System.nanoTime()
-            val realDelta = (currentTime - lastTime) / 1_000_000_000f
+            // Cap delta to avoid huge integration jumps after long pauses (e.g. coming back from background).
+            val realDelta = ((currentTime - lastTime) / 1_000_000_000f).coerceAtMost(0.066f)
             val delta = realDelta * speed * (0.4f + flowIntensity * 1.6f) * (1f + audioInfluence * 1.5f)
             lastTime = currentTime
             time += delta
@@ -646,29 +689,30 @@ fun LavaLamp(
             val glassBottom = centerY + lampHeight / 2f
 
             // Initialize/update grid positions for fluidImage mode
-            if (fluidImage != null) {
+            val img = currentFluidImage
+            if (img != null) {
                 val cols = kotlin.math.sqrt(blobs.size.toDouble()).toInt().coerceAtLeast(1)
                 val rows = (blobs.size + cols - 1) / cols
                 
-                val imageRatio = fluidImage.width.toFloat() / fluidImage.height.toFloat()
+                val imageRatio = img.width.toFloat() / img.height.toFloat()
                 val containerRatio = width / height
-                val imgTargetWidth = if (containerMode == LavaContainerMode.GLASS_BOTTLE) lampWidth * 0.8f else {
+                val imgTargetWidth = if (currentContainerMode == LavaContainerMode.GLASS_BOTTLE) lampWidth * 0.8f else {
                     if (imageRatio > containerRatio) width else height * imageRatio
                 }
-                val imgTargetHeight = if (containerMode == LavaContainerMode.GLASS_BOTTLE) lampHeight * 0.7f else {
+                val imgTargetHeight = if (currentContainerMode == LavaContainerMode.GLASS_BOTTLE) lampHeight * 0.7f else {
                     if (imageRatio > containerRatio) width / imageRatio else height
                 }
                 
                 val imgTargetLeft = centerX - imgTargetWidth / 2f
-                val imgTargetTop = if (containerMode == LavaContainerMode.GLASS_BOTTLE) glassTop + lampHeight * 0.15f else centerY - imgTargetHeight / 2f
+                val imgTargetTop = if (currentContainerMode == LavaContainerMode.GLASS_BOTTLE) glassTop + lampHeight * 0.15f else centerY - imgTargetHeight / 2f
                 
                 val cellW = imgTargetWidth / cols
                 val cellH = imgTargetHeight / rows
                 val avgCellSize = (cellW + cellH) / 2f
                 val suggestedRadius = avgCellSize * 0.95f
                 
-                val srcCellW = fluidImage.width.toFloat() / cols
-                val srcCellH = fluidImage.height.toFloat() / rows
+                val srcCellW = img.width.toFloat() / cols
+                val srcCellH = img.height.toFloat() / rows
                 
                 blobs.forEachIndexed { index, b ->
                     val col = index % cols
@@ -692,8 +736,8 @@ fun LavaLamp(
             }
 
             // C. Viscous Shake sloshing & bubble splitting (oil and water emulsification)
-            if (shakeTriggered) {
-                shakeTriggered = false // Reset trigger instantly
+            if (sensorHolder.shakeTriggered) {
+                sensorHolder.shakeTriggered = false // Reset trigger instantly
                 
                 if (fluidImage == null) {
                     val newBlobs = mutableListOf<LavaBlob>()
@@ -716,8 +760,8 @@ fun LavaLamp(
                                         baseRadius = newRadius,
                                         x = blob.x,
                                         y = blob.y,
-                                        vx = (-180f - Random.nextFloat() * 120f) * physicsConfig.shakeInfluence,
-                                        vy = blob.vy + ((Random.nextFloat() - 0.5f) * 120f) * physicsConfig.shakeInfluence,
+                                        vx = (-180f - Random.nextFloat() * 120f) * currentPhysicsConfig.shakeInfluence,
+                                        vy = blob.vy + ((Random.nextFloat() - 0.5f) * 120f) * currentPhysicsConfig.shakeInfluence,
                                         imageIndex = blob.imageIndex
                                     )
                                 )
@@ -727,15 +771,15 @@ fun LavaLamp(
                                         baseRadius = newRadius,
                                         x = blob.x,
                                         y = blob.y,
-                                        vx = (180f + Random.nextFloat() * 120f) * physicsConfig.shakeInfluence,
-                                        vy = blob.vy + ((Random.nextFloat() - 0.5f) * 120f) * physicsConfig.shakeInfluence,
+                                        vx = (180f + Random.nextFloat() * 120f) * currentPhysicsConfig.shakeInfluence,
+                                        vy = blob.vy + ((Random.nextFloat() - 0.5f) * 120f) * currentPhysicsConfig.shakeInfluence,
                                         imageIndex = blob.imageIndex
                                     )
                                 )
                             } else {
                                 // Shake up small blobs with random sloshing velocities!
-                                blob.vx += ((Random.nextFloat() - 0.5f) * 450f) * physicsConfig.shakeInfluence
-                                blob.vy += ((Random.nextFloat() - 0.5f) * 450f) * physicsConfig.shakeInfluence
+                                blob.vx += ((Random.nextFloat() - 0.5f) * 450f) * currentPhysicsConfig.shakeInfluence
+                                blob.vy += ((Random.nextFloat() - 0.5f) * 450f) * currentPhysicsConfig.shakeInfluence
                             }
                         }
                     }
@@ -747,17 +791,17 @@ fun LavaLamp(
                 } else {
                     // Shake sloshes image grid nodes vigorously without splitting them
                     blobs.forEach { blob ->
-                        blob.vx += ((Random.nextFloat() - 0.5f) * 350f) * physicsConfig.shakeInfluence
-                        blob.vy += ((Random.nextFloat() - 0.5f) * 350f) * physicsConfig.shakeInfluence
+                        blob.vx += ((Random.nextFloat() - 0.5f) * 350f) * currentPhysicsConfig.shakeInfluence
+                        blob.vy += ((Random.nextFloat() - 0.5f) * 350f) * currentPhysicsConfig.shakeInfluence
                     }
                 }
             }
 
             // D. Viscous Fluid Necking, Pinch-Off, and Re-Merging (Liquid physics stretching)
-            if (interactive) {
+            if (currentInteractive) {
                 val currentTouch = touchPosition
                 if (currentTouch != null) {
-                    if (fluidImage != null) {
+                    if (currentFluidImage != null) {
                         // In fluid image mode: directly attach the closest node to the finger
                         val hasAttachedFinger = blobs.any { it.isAttachedToFinger }
                         if (!hasAttachedFinger) {
@@ -799,8 +843,8 @@ fun LavaLamp(
                                             baseRadius = daughterRadius,
                                             x = currentTouch.x,
                                             y = currentTouch.y,
-                                            vx = touchVelocity.x * 0.2f * physicsConfig.touchInfluence,
-                                            vy = touchVelocity.y * 0.2f * physicsConfig.touchInfluence,
+                                            vx = touchVelocity.x * 0.2f * currentPhysicsConfig.touchInfluence,
+                                            vy = touchVelocity.y * 0.2f * currentPhysicsConfig.touchInfluence,
                                             imageIndex = parent.imageIndex,
                                             connectedBlobId = parent.id,
                                             isAttachedToFinger = true
@@ -819,8 +863,8 @@ fun LavaLamp(
                         if (b.isAttachedToFinger) {
                             b.x = b.x * 0.72f + currentTouch.x * 0.28f
                             b.y = b.y * 0.72f + currentTouch.y * 0.28f
-                            b.vx = touchVelocity.x * physicsConfig.touchInfluence
-                            b.vy = touchVelocity.y * physicsConfig.touchInfluence
+                            b.vx = touchVelocity.x * currentPhysicsConfig.touchInfluence
+                            b.vy = touchVelocity.y * currentPhysicsConfig.touchInfluence
                         }
                     }
                 } else {
@@ -829,7 +873,7 @@ fun LavaLamp(
                 }
 
                 // Process spring dynamics (only for standard lava lamp mode)
-                if (fluidImage == null) {
+                if (currentFluidImage == null) {
                     val listForSprings = blobs.toList()
                     val daughtersToRemove = mutableListOf<LavaBlob>()
                     val parentConnectionsToClear = mutableListOf<LavaBlob>()
@@ -870,8 +914,8 @@ fun LavaLamp(
                                     blobA.snapRecoilTime = 0f
                                     blobB.snapRecoilTime = 0f
                                     // Give the daughter droplet a physical fling matching finger velocity
-                                    blobB.vx = touchVelocity.x * 0.7f * physicsConfig.touchInfluence
-                                    blobB.vy = touchVelocity.y * 0.7f * physicsConfig.touchInfluence
+                                    blobB.vx = touchVelocity.x * 0.7f * currentPhysicsConfig.touchInfluence
+                                    blobB.vy = touchVelocity.y * 0.7f * currentPhysicsConfig.touchInfluence
                                 }
 
                                 // B. Re-Merge Snap-Back: If touch released and they snap back together, merge into one!
@@ -894,31 +938,34 @@ fun LavaLamp(
             for (i in activePhysicsBlobs.indices) {
                 val blobI = activePhysicsBlobs[i]
                 if (blobI.x == -1f) continue
-                val radiusI = blobI.baseRadius * (1f + 0.12f * sin(time * blobI.scaleSpeed + blobI.scalePhase))
+                val radiusI = blobI.baseRadius * currentBlobScale * (1f + 0.12f * sin(time * blobI.scaleSpeed + blobI.scalePhase))
                 
                 for (j in i + 1 until activePhysicsBlobs.size) {
                     val blobJ = activePhysicsBlobs[j]
                     if (blobJ.x == -1f) continue
-                    val radiusJ = blobJ.baseRadius * (1f + 0.12f * sin(time * blobJ.scaleSpeed + blobJ.scalePhase))
-                    
+                    val radiusJ = blobJ.baseRadius * currentBlobScale * (1f + 0.12f * sin(time * blobJ.scaleSpeed + blobJ.scalePhase))
+
                     val dx = blobJ.x - blobI.x
                     val dy = blobJ.y - blobI.y
-                    val dist = hypot(dx, dy)
+                    // Cheap squared-distance prune before sqrt: skip pairs clearly out of interaction range.
                     val minDist = radiusI + radiusJ
-                    val interactionRadius = minDist * 1.6f // Surface tension reach
-                    
-                    if (dist < interactionRadius && dist > 1f) {
+                    val interactionRadius = minDist * 1.6f
+                    val sqDist = dx * dx + dy * dy
+                    val sqInteraction = interactionRadius * interactionRadius
+                    if (sqDist >= sqInteraction || sqDist <= 1f) continue
+
+                    val dist = kotlin.math.sqrt(sqDist)
                         if (dist < minDist) {
                             // Volumetric Overlap Repulsion (prevent collapse)
                             val overlapRatio = (minDist - dist) / minDist
-                            val pushForce = overlapRatio * physicsConfig.softRepulsion * 4f
+                            val pushForce = overlapRatio * currentPhysicsConfig.softRepulsion * 4f
                             val fx = (dx / dist) * pushForce
                             val fy = (dy / dist) * pushForce
                             
-                            blobI.vx -= fx * physicsConfig.smoothingWeight
-                            blobI.vy -= fy * physicsConfig.smoothingWeight
-                            blobJ.vx += fx * physicsConfig.smoothingWeight
-                            blobJ.vy += fy * physicsConfig.smoothingWeight
+                            blobI.vx -= fx * currentPhysicsConfig.smoothingWeight
+                            blobI.vy -= fy * currentPhysicsConfig.smoothingWeight
+                            blobJ.vx += fx * currentPhysicsConfig.smoothingWeight
+                            blobJ.vy += fy * currentPhysicsConfig.smoothingWeight
                         } else {
                             // Surface Tension / Cohesion Attraction
                             val gap = dist - minDist
@@ -929,10 +976,10 @@ fun LavaLamp(
                             val fx = (dx / dist) * pullForce
                             val fy = (dy / dist) * pullForce
                             
-                            blobI.vx += fx * physicsConfig.smoothingWeight
-                            blobI.vy += fy * physicsConfig.smoothingWeight
-                            blobJ.vx -= fx * physicsConfig.smoothingWeight
-                            blobJ.vy -= fy * physicsConfig.smoothingWeight
+                            blobI.vx += fx * currentPhysicsConfig.smoothingWeight
+                            blobI.vy += fy * currentPhysicsConfig.smoothingWeight
+                            blobJ.vx -= fx * currentPhysicsConfig.smoothingWeight
+                            blobJ.vy -= fy * currentPhysicsConfig.smoothingWeight
                         }
 
                         // Physical Color Mixing
@@ -942,7 +989,6 @@ fun LavaLamp(
                             blobI.color = lerpColorHSV(blobI.color, mixedColor, mixRate)
                             blobJ.color = lerpColorHSV(blobJ.color, mixedColor, mixRate)
                         }
-                    }
                 }
             }
 
@@ -963,7 +1009,7 @@ fun LavaLamp(
                 }
 
                 // A. Vertical Buoyancy / Gravity force
-                var verticalBuoyancy = when (gravityMode) {
+                var verticalBuoyancy = when (currentGravityMode) {
                     LavaGravity.UP -> -110f
                     LavaGravity.DOWN -> 110f
                     LavaGravity.ZERO_GRAVITY -> 0f
@@ -974,16 +1020,16 @@ fun LavaLamp(
 
                 // In Liquid Image restoration mode, scale down drift & gravity so they don't combat restoration,
                 // while still letting them play if restoration strength is set to 0.
-                if (fluidImage != null && imageRestorationStrength > 0f) {
-                    val suppression = (1f - (imageRestorationStrength * 5f).coerceIn(0f, 1f))
+                if (currentFluidImage != null && currentImageRestoration > 0f) {
+                    val suppression = (1f - (currentImageRestoration * 5f).coerceIn(0f, 1f))
                     verticalBuoyancy *= suppression
                     horizontalDrift *= suppression
                 }
 
                 // B. Viscous Accelerometer Tilt Gravity sliding (Gentle horizontal drift only)
-                var tiltForceX = tiltOffset.x * 12f
-                var tiltForceY = tiltOffset.y * 4f
-                if (fluidImage != null && !enableTiltDeformation) {
+                var tiltForceX = sensorHolder.tiltX * 12f
+                var tiltForceY = sensorHolder.tiltY * 4f
+                if (currentFluidImage != null && !currentEnableTiltDeform) {
                     tiltForceX = 0f
                     tiltForceY = 0f
                 }
@@ -993,7 +1039,7 @@ fun LavaLamp(
                 var touchForceY = 0f
                 var dragForceX = 0f
                 var dragForceY = 0f
-                if (interactive) {
+                if (currentInteractive) {
                     touchPosition?.let { touch ->
                         val dx = touch.x - blob.x
                         val dy = touch.y - blob.y
@@ -1003,7 +1049,7 @@ fun LavaLamp(
                         val influenceRadius = lampWidth * 1.3f
                         if (dist < influenceRadius && dist > 5f) {
                             val pullFactor = (1f - dist / influenceRadius)
-                            val strength = pullFactor * 160f * physicsConfig.touchInfluence
+                            val strength = pullFactor * 160f * currentPhysicsConfig.touchInfluence
                             touchForceX = (dx / dist) * strength
                             touchForceY = (dy / dist) * strength
                         }
@@ -1012,8 +1058,8 @@ fun LavaLamp(
                         val dragRadius = lampWidth * 1.2f
                         if (dist < dragRadius && touchVelocity != Offset.Zero) {
                             val dragFactor = (1f - dist / dragRadius)
-                            dragForceX = touchVelocity.x * dragFactor * 0.45f * physicsConfig.touchInfluence
-                            dragForceY = touchVelocity.y * dragFactor * 0.45f * physicsConfig.touchInfluence
+                            dragForceX = touchVelocity.x * dragFactor * 0.45f * currentPhysicsConfig.touchInfluence
+                            dragForceY = touchVelocity.y * dragFactor * 0.45f * currentPhysicsConfig.touchInfluence
                         }
                     }
                 }
@@ -1023,16 +1069,16 @@ fun LavaLamp(
                 var vyInput = verticalBuoyancy + tiltForceY + touchForceY + dragForceY
 
                 // Organic Spring Restoration Force for Fluid Images
-                if (fluidImage != null && imageRestorationStrength > 0f && blob.originalX != -1f) {
+                if (currentFluidImage != null && currentImageRestoration > 0f && blob.originalX != -1f) {
                     val rx = blob.originalX - blob.x
                     val ry = blob.originalY - blob.y
                     
-                    vxInput += rx * imageRestorationStrength * 160f
-                    vyInput += ry * imageRestorationStrength * 160f
+                    vxInput += rx * currentImageRestoration * 160f
+                    vyInput += ry * currentImageRestoration * 160f
                 }
 
-                blob.vx = blob.vx * physicsConfig.damping + vxInput * physicsConfig.smoothingWeight
-                blob.vy = blob.vy * physicsConfig.damping + vyInput * physicsConfig.smoothingWeight
+                blob.vx = blob.vx * currentPhysicsConfig.damping + vxInput * currentPhysicsConfig.smoothingWeight
+                blob.vy = blob.vy * currentPhysicsConfig.damping + vyInput * currentPhysicsConfig.smoothingWeight
 
                 // Speed Clamping (Viscosity Limit to prevent liquid from disintegrating or scattering)
                 val maxSpeed = 380f
@@ -1046,8 +1092,8 @@ fun LavaLamp(
                 blob.x += blob.vx * delta
                 blob.y += blob.vy * delta
 
-                // F. Dynamic breathing size (scaled by blobScale)
-                val currentRadius = blob.baseRadius * blobScale * (1f + 0.12f * sin(time * blob.scaleSpeed + blob.scalePhase))
+                // F. Dynamic breathing size (scaled by currentBlobScale via rememberUpdatedState)
+                val currentRadius = blob.baseRadius * currentBlobScale * (1f + 0.12f * sin(time * blob.scaleSpeed + blob.scalePhase))
 
                 // G. Obstacle Collision Deflection (Slide and deflect smoothly around rectangular UI obstacles)
                 currentObstacles.forEach { rect ->
@@ -1067,8 +1113,8 @@ fun LavaLamp(
                             
                             // Apply deflection velocity normal to the obstacle surface
                             val pushForce = (overlap / contactRadius) * 550f
-                            blob.vx += (dx / dist) * pushForce * physicsConfig.smoothingWeight
-                            blob.vy += (dy / dist) * pushForce * physicsConfig.smoothingWeight
+                            blob.vx += (dx / dist) * pushForce * currentPhysicsConfig.smoothingWeight
+                            blob.vy += (dy / dist) * pushForce * currentPhysicsConfig.smoothingWeight
                         }
                     } else {
                         // Blob center is inside the rectangle; eject it to the closest edge
@@ -1143,15 +1189,15 @@ fun LavaLamp(
                 
                 for (p in particleList) {
                     // Convection flow (drifts up or down depending on gravityMode)
-                    val convectionForce = when (gravityMode) {
+                    val convectionForce = when (currentGravityMode) {
                         LavaGravity.UP -> -40f
                         LavaGravity.DOWN -> 40f
                         LavaGravity.ZERO_GRAVITY -> 0f
                     }
                     
                     // Device tilt sloshing force on micro-dust
-                    val tiltForceX = tiltOffset.x * 2.5f
-                    val tiltForceY = tiltOffset.y * 1.0f
+                    val tiltForceX = sensorHolder.tiltX * 2.5f
+                    val tiltForceY = sensorHolder.tiltY * 1.0f
                     
                     p.vx += tiltForceX * delta
                     p.vy += (convectionForce + tiltForceY) * delta
@@ -1217,26 +1263,38 @@ fun LavaLamp(
         }
     }
 
-    // 4. Pre-generate micro-grain noise bitmap for tactile matte finish
+    // 4. Pre-generate micro-grain noise bitmap for tactile matte finish.
+    // Uses ALPHA_8 (1 byte/pixel instead of 4) and a remembered Paint+BitmapShader so the
+    // shader/paint are not reallocated on every draw.
     val noiseBitmap = remember(noiseOverlay) {
         if (!noiseOverlay) null else {
-            val width = 128
-            val height = 128
-            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            val pixels = IntArray(width * height)
+            val w = 128
+            val h = 128
+            val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ALPHA_8)
+            val pixels = ByteArray(w * h)
             val random = java.util.Random()
             for (i in pixels.indices) {
-                val alpha = random.nextInt(15)
-                pixels[i] = android.graphics.Color.argb(alpha, 255, 255, 255)
+                pixels[i] = random.nextInt(15).toByte()
             }
-            bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+            bitmap.copyPixelsFromBuffer(java.nio.ByteBuffer.wrap(pixels))
             bitmap
         }
     }
 
-    // Explicit Lifecycle and Memory Cleanup: Recycle native bitmap on dispose
+    val noisePaint = remember(noiseBitmap) {
+        noiseBitmap?.let {
+            Paint().apply {
+                isAntiAlias = false
+                shader = BitmapShader(it, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+                color = android.graphics.Color.WHITE
+            }
+        }
+    }
+
+    // Explicit Lifecycle and Memory Cleanup: clear shader reference and recycle native bitmap on dispose.
     DisposableEffect(noiseBitmap) {
         onDispose {
+            noisePaint?.shader = null
             noiseBitmap?.let {
                 if (!it.isRecycled) {
                     it.recycle()
@@ -1262,6 +1320,57 @@ fun LavaLamp(
         }
     } else Modifier
 
+    // Cached RenderEffect chain. Rebuilt only when viscosity / shaderConfig / fluidImage / shader-availability change,
+    // instead of on every frame inside the graphicsLayer block.
+    val cachedMetaballRenderEffect: androidx.compose.ui.graphics.RenderEffect? = remember(viscosity, shaderConfig, fluidImage == null, runtimeShader) {
+        val isEmulator = Build.FINGERPRINT.contains("generic") ||
+                       Build.FINGERPRINT.contains("unknown") ||
+                       Build.MODEL.contains("google_sdk") ||
+                       Build.MODEL.contains("Emulator") ||
+                       Build.MODEL.contains("Android SDK built for x86") ||
+                       Build.BRAND.contains("generic") ||
+                       Build.DEVICE.contains("generic")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !isEmulator && fluidImage == null) {
+            val (blurRadius, alphaMul, alphaAdd) = when (viscosity) {
+                LavaViscosity.WATER -> Triple(18f, 70f, -3500f)
+                LavaViscosity.STANDARD -> Triple(32f, 45f, -2250f)
+                LavaViscosity.THICK_HONEY -> Triple(50f, 30f, -1500f)
+            }
+            val blur = android.graphics.RenderEffect.createBlurEffect(
+                blurRadius, blurRadius, android.graphics.Shader.TileMode.CLAMP
+            )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && shaderConfig.enabled && runtimeShader != null) {
+                val thresholdVal = when (viscosity) {
+                    LavaViscosity.WATER -> 0.21f
+                    LavaViscosity.STANDARD -> 0.20f
+                    LavaViscosity.THICK_HONEY -> 0.18f
+                }
+                runtimeShader.setFloatUniform("threshold", thresholdVal)
+                runtimeShader.setFloatUniform("refractionStrength", shaderConfig.refractionStrength)
+                runtimeShader.setFloatUniform("lightDir", shaderConfig.lightDirectionX, shaderConfig.lightDirectionY, 0.7f)
+                runtimeShader.setFloatUniform("lightColor", 1.0f, 1.0f, 1.0f)
+                runtimeShader.setFloatUniform("specularIntensity", shaderConfig.specularIntensity)
+                runtimeShader.setFloatUniform("specularPower", shaderConfig.specularPower)
+                val shaderEffect = android.graphics.RenderEffect.createRuntimeShaderEffect(
+                    runtimeShader, "inputShader"
+                )
+                android.graphics.RenderEffect.createChainEffect(shaderEffect, blur).asComposeRenderEffect()
+            } else {
+                val matrix = floatArrayOf(
+                    1f, 0f, 0f, 0f, 0f,
+                    0f, 1f, 0f, 0f, 0f,
+                    0f, 0f, 1f, 0f, 0f,
+                    0f, 0f, 0f, alphaMul, alphaAdd
+                )
+                val colorFilter = android.graphics.RenderEffect.createColorFilterEffect(
+                    ColorMatrixColorFilter(matrix)
+                )
+                android.graphics.RenderEffect.createChainEffect(colorFilter, blur).asComposeRenderEffect()
+            }
+        } else null
+    }
+
     // =========================================================================
     // MULTI-LAYERED COMPOSITION STRUCTURE FOR FLUID METABALLS AND SHARP CHROME
     // =========================================================================
@@ -1283,24 +1392,26 @@ fun LavaLamp(
             val glassTop = centerY - lampHeight / 2f
             val glassBottom = centerY + lampHeight / 2f
 
-            // Build Tapered Glass Bottle Chamber Path
-            val glassPath = Path().apply {
-                val bottomWidth = lampWidth * 0.95f
-                val topWidth = lampWidth * 0.65f
-                
-                moveTo(centerX - bottomWidth / 2f, glassBottom)
-                cubicTo(
-                    centerX - lampWidth * 0.48f, centerY + lampHeight * 0.2f,
-                    centerX - lampWidth * 0.38f, centerY - lampHeight * 0.2f,
-                    centerX - topWidth / 2f, glassTop
-                )
-                lineTo(centerX + topWidth / 2f, glassTop)
-                cubicTo(
-                    centerX + lampWidth * 0.38f, centerY - lampHeight * 0.2f,
-                    centerX + lampWidth * 0.48f, centerY + lampHeight * 0.2f,
-                    centerX + bottomWidth / 2f, glassBottom
-                )
-                close()
+            // Build Tapered Glass Bottle Chamber Path -- cached by size; rebuilt only on size change.
+            val glassPath = remember(size) {
+                Path().apply {
+                    val bottomWidth = lampWidth * 0.95f
+                    val topWidth = lampWidth * 0.65f
+
+                    moveTo(centerX - bottomWidth / 2f, glassBottom)
+                    cubicTo(
+                        centerX - lampWidth * 0.48f, centerY + lampHeight * 0.2f,
+                        centerX - lampWidth * 0.38f, centerY - lampHeight * 0.2f,
+                        centerX - topWidth / 2f, glassTop
+                    )
+                    lineTo(centerX + topWidth / 2f, glassTop)
+                    cubicTo(
+                        centerX + lampWidth * 0.38f, centerY - lampHeight * 0.2f,
+                        centerX + lampWidth * 0.48f, centerY + lampHeight * 0.2f,
+                        centerX + bottomWidth / 2f, glassBottom
+                    )
+                    close()
+                }
             }
 
             // LAYER 0: Custom full background image (drawn behind the entire component)
@@ -1353,59 +1464,11 @@ fun LavaLamp(
             }
             } // end showGlassBottle Layer 1
 
-            // Helper function for graphicsLayer modifier to avoid repeating the RenderEffect code
+            // Helper function for graphicsLayer modifier; the RenderEffect chain itself is cached in
+            // `cachedMetaballRenderEffect` (computed once per relevant config change) so that draw
+            // passes only assign a reference instead of rebuilding the chain.
             val metaballGraphicsLayer: androidx.compose.ui.graphics.GraphicsLayerScope.() -> Unit = {
-                val isEmulator = Build.FINGERPRINT.contains("generic") ||
-                               Build.FINGERPRINT.contains("unknown") ||
-                               Build.MODEL.contains("google_sdk") ||
-                               Build.MODEL.contains("Emulator") ||
-                               Build.MODEL.contains("Android SDK built for x86") ||
-                               Build.BRAND.contains("generic") ||
-                               Build.DEVICE.contains("generic")
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !isEmulator && fluidImage == null) {
-                    val (blurRadius, alphaMul, alphaAdd) = when (viscosity) {
-                        LavaViscosity.WATER -> Triple(18f, 70f, -3500f)
-                        LavaViscosity.STANDARD -> Triple(32f, 45f, -2250f)
-                        LavaViscosity.THICK_HONEY -> Triple(50f, 30f, -1500f)
-                    }
-
-                    val blur = android.graphics.RenderEffect.createBlurEffect(
-                        blurRadius, blurRadius, android.graphics.Shader.TileMode.CLAMP
-                    )
-
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && shaderConfig.enabled && runtimeShader != null) {
-                        val thresholdVal = when (viscosity) {
-                            LavaViscosity.WATER -> 0.21f
-                            LavaViscosity.STANDARD -> 0.20f
-                            LavaViscosity.THICK_HONEY -> 0.18f
-                        }
-                        runtimeShader.setFloatUniform("threshold", thresholdVal)
-                        runtimeShader.setFloatUniform("refractionStrength", shaderConfig.refractionStrength)
-                        runtimeShader.setFloatUniform("lightDir", shaderConfig.lightDirectionX, shaderConfig.lightDirectionY, 0.7f)
-                        runtimeShader.setFloatUniform("lightColor", 1.0f, 1.0f, 1.0f)
-                        runtimeShader.setFloatUniform("specularIntensity", shaderConfig.specularIntensity)
-                        runtimeShader.setFloatUniform("specularPower", shaderConfig.specularPower)
-
-                        val shaderEffect = android.graphics.RenderEffect.createRuntimeShaderEffect(
-                            runtimeShader, "inputShader"
-                        )
-                        renderEffect = android.graphics.RenderEffect.createChainEffect(shaderEffect, blur)
-                            .asComposeRenderEffect()
-                    } else {
-                        val matrix = floatArrayOf(
-                            1f, 0f, 0f, 0f, 0f,
-                            0f, 1f, 0f, 0f, 0f,
-                            0f, 0f, 1f, 0f, 0f,
-                            0f, 0f, 0f, alphaMul, alphaAdd
-                        )
-                        val colorFilter = android.graphics.RenderEffect.createColorFilterEffect(
-                            ColorMatrixColorFilter(matrix)
-                        )
-                        renderEffect = android.graphics.RenderEffect.createChainEffect(colorFilter, blur)
-                            .asComposeRenderEffect()
-                    }
-                }
+                renderEffect = cachedMetaballRenderEffect
             }
 
             Canvas(
@@ -1483,8 +1546,8 @@ fun LavaLamp(
                         val pulseFactor = if (pulseSpeed > 0f) (1f + 0.15f * sin(time * pulseSpeed)) else 1f
                         
                         // Dynamic frequency scale factor mapping
-                        val bandValue = if (audioFrequencyBands.isNotEmpty()) {
-                            audioFrequencyBands[index % audioFrequencyBands.size].coerceIn(0f, 1f)
+                        val bandValue = if (currentAudioBands.isNotEmpty()) {
+                            currentAudioBands[index % currentAudioBands.size].coerceIn(0f, 1f)
                         } else {
                             0f
                         }
@@ -1605,6 +1668,46 @@ fun LavaLamp(
 
             // LAYER 3: Sharp Gloss reflections, metallic base and cap (only when bottle is shown and 3D style requested)
             if (containerMode == LavaContainerMode.GLASS_BOTTLE && glassStyle == LavaGlassStyle.REALISTIC_3D) {
+            // Cache metallic chrome resources by size; rebuilt only on resize.
+            val metallicBrush = remember(size) {
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        Color(0xFF2C2D35), // Dark chrome edge
+                        Color(0xFF4C4E58), // Medium metal
+                        Color(0xFFE2E4EB), // Bright reflective chrome core
+                        Color(0xFF636572), // Soft metal shadow
+                        Color(0xFF1E1F24)  // Dark chrome edge
+                    ),
+                    startX = centerX - lampWidth / 2f,
+                    endX = centerX + lampWidth / 2f
+                )
+            }
+            val baseTopWidth = lampWidth * 0.95f
+            val baseBottomWidth = lampWidth * 1.15f
+            val baseHeight = lampHeight * 0.16f
+            val baseBottomY = glassBottom + baseHeight
+            val basePath = remember(size) {
+                Path().apply {
+                    moveTo(centerX - baseTopWidth / 2f, glassBottom)
+                    lineTo(centerX + baseTopWidth / 2f, glassBottom)
+                    lineTo(centerX + baseBottomWidth / 2f, baseBottomY)
+                    lineTo(centerX - baseBottomWidth / 2f, baseBottomY)
+                    close()
+                }
+            }
+            val capBottomWidth = lampWidth * 0.65f
+            val capTopWidth = lampWidth * 0.5f
+            val capHeight = lampHeight * 0.08f
+            val capTopY = glassTop - capHeight
+            val capPath = remember(size) {
+                Path().apply {
+                    moveTo(centerX - capBottomWidth / 2f, glassTop)
+                    lineTo(centerX + capBottomWidth / 2f, glassTop)
+                    lineTo(centerX + capTopWidth / 2f, capTopY)
+                    lineTo(centerX - capTopWidth / 2f, capTopY)
+                    close()
+                }
+            }
             Canvas(modifier = Modifier.fillMaxSize()) {
                 // A. Draw Curved Glass Reflex Highlights (drawn on top of blurred blobs!)
                 clipPath(glassPath) {
@@ -1636,32 +1739,7 @@ fun LavaLamp(
                     )
                 }
 
-                // B. Draw Solid Metallic Cap and Base
-                val metallicBrush = Brush.horizontalGradient(
-                    colors = listOf(
-                        Color(0xFF2C2D35), // Dark chrome edge
-                        Color(0xFF4C4E58), // Medium metal
-                        Color(0xFFE2E4EB), // Bright reflective chrome core
-                        Color(0xFF636572), // Soft metal shadow
-                        Color(0xFF1E1F24)  // Dark chrome edge
-                    ),
-                    startX = centerX - lampWidth / 2f,
-                    endX = centerX + lampWidth / 2f
-                )
-
-                // Metallic Base (Curved Trapezoid base)
-                val baseTopWidth = lampWidth * 0.95f
-                val baseBottomWidth = lampWidth * 1.15f
-                val baseHeight = lampHeight * 0.16f
-                val baseBottomY = glassBottom + baseHeight
-
-                val basePath = Path().apply {
-                    moveTo(centerX - baseTopWidth / 2f, glassBottom)
-                    lineTo(centerX + baseTopWidth / 2f, glassBottom)
-                    lineTo(centerX + baseBottomWidth / 2f, baseBottomY)
-                    lineTo(centerX - baseBottomWidth / 2f, baseBottomY)
-                    close()
-                }
+                // B. Draw Solid Metallic Cap and Base (resources cached above)
                 drawPath(path = basePath, brush = metallicBrush)
 
                 // Glowing trim line
@@ -1672,34 +1750,13 @@ fun LavaLamp(
                     strokeWidth = 3f
                 )
 
-                // Metallic Top Cap (Curved tapered cap)
-                val capBottomWidth = lampWidth * 0.65f
-                val capTopWidth = lampWidth * 0.5f
-                val capHeight = lampHeight * 0.08f
-                val capTopY = glassTop - capHeight
-
-                val capPath = Path().apply {
-                    moveTo(centerX - capBottomWidth / 2f, glassTop)
-                    lineTo(centerX + capBottomWidth / 2f, glassTop)
-                    lineTo(centerX + capTopWidth / 2f, capTopY)
-                    lineTo(centerX - capTopWidth / 2f, capTopY)
-                    close()
-                }
                 drawPath(path = capPath, brush = metallicBrush)
 
-                // C. Draw high-performance hardware tiled cinematic noise overlay
-                noiseBitmap?.let { bitmap ->
-                    drawContext.canvas.nativeCanvas.drawBitmap(
-                        bitmap,
-                        null,
-                        Rect(0, 0, size.width, size.height),
-                        Paint().apply {
-                            shader = BitmapShader(
-                                bitmap,
-                                Shader.TileMode.REPEAT,
-                                Shader.TileMode.REPEAT
-                            )
-                        }
+                // C. Draw high-performance hardware tiled cinematic noise overlay (cached Paint+Shader)
+                val cachedNoisePaint = noisePaint
+                if (cachedNoisePaint != null) {
+                    drawContext.canvas.nativeCanvas.drawRect(
+                        0f, 0f, size.width.toFloat(), size.height.toFloat(), cachedNoisePaint
                     )
                 }
             }
@@ -1766,8 +1823,8 @@ private fun blendColorsHSV(color1: Color, color2: Color, fraction: Float): Color
 }
 
 private fun lerpColorHSV(color1: Color, color2: Color, fraction: Float): Color {
-    val hsv1 = FloatArray(3)
-    val hsv2 = FloatArray(3)
+    val hsv1 = hsvScratchA.get()!!
+    val hsv2 = hsvScratchB.get()!!
     android.graphics.Color.colorToHSV(color1.toArgb(), hsv1)
     android.graphics.Color.colorToHSV(color2.toArgb(), hsv2)
     
@@ -1784,7 +1841,11 @@ private fun lerpColorHSV(color1: Color, color2: Color, fraction: Float): Color {
     val s = hsv1[1] + (hsv2[1] - hsv1[1]) * fraction
     val v = hsv1[2] + (hsv2[2] - hsv1[2]) * fraction
     val a = color1.alpha + (color2.alpha - color1.alpha) * fraction
-    
-    val blendedInt = android.graphics.Color.HSVToColor((a * 255).toInt(), floatArrayOf(h, s, v))
+
+    // Reuse hsv1 as scratch for HSVToColor (avoids per-call FloatArray allocation).
+    hsv1[0] = h
+    hsv1[1] = s
+    hsv1[2] = v
+    val blendedInt = android.graphics.Color.HSVToColor((a * 255).toInt(), hsv1)
     return Color(blendedInt)
 }

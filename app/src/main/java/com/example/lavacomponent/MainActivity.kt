@@ -58,6 +58,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.vectorResource
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 enum class Screen { HOME, SPLASH, LOGIN, CUSTOM_OBJECTS, SANDBOX, OBSTACLE_DEMO, FLUID_IMAGE_DEMO, AUDIO_REACTIVE, LINKEDIN_DEMO, COLOR_BLEND_DEMO }
 
@@ -1204,9 +1207,13 @@ fun AudioReactiveDemoScreen(onBack: () -> Unit) {
     var highsState by remember { mutableFloatStateOf(0f) }
     var overallAmplitudeState by remember { mutableFloatStateOf(0f) }
 
-    // Start audio record processor loop when permission is available
+    // Start audio record processor loop when permission is available.
+    // Tied to the Lifecycle so recording pauses automatically when the app is
+    // backgrounded (ON_PAUSE) and resumes when it returns (ON_RESUME).
+    // This prevents the microphone privacy indicator from staying active in background.
+    val lifecycleOwner = LocalLifecycleOwner.current
     if (hasPermission) {
-        DisposableEffect(Unit) {
+        DisposableEffect(lifecycleOwner) {
             val processor = LavaAudioProcessor(context).apply {
                 onSpectrumUpdated = { b, m, h, overall ->
                     bassState = b
@@ -1215,8 +1222,20 @@ fun AudioReactiveDemoScreen(onBack: () -> Unit) {
                     overallAmplitudeState = overall
                 }
             }
-            processor.start()
+            val observer = LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_RESUME -> processor.start()
+                    Lifecycle.Event.ON_PAUSE  -> processor.stop()
+                    else -> Unit
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            // Start immediately if already in STARTED+ state
+            if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                processor.start()
+            }
             onDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
                 processor.stop()
             }
         }
